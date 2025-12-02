@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pronostici - Supabase</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
+const SUPABASE_URL = 'https://jhquweahxrixlxdolpwc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocXV3ZWFoeHJpeGx4ZG9scHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDYxMTksImV4cCI6MjA4MDAyMjExOX0.UGA3_cqQvzXC79gKsceFnmqrCnOy1cjJQ7uEKLE0K3c';
+const ADMIN_USER_ID = '1b2932fe-9d8e-4518-a8cf-79ae5cf98bcd';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CAMPIONATI = [
+  { id: 'serie-a', nome: 'Serie A 🇮🇹', emoji: '⚽' },
+  { id: 'premier-league', nome: 'Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿', emoji: '⚽' },
+  { id: 'la-liga', nome: 'La Liga 🇪🇸', emoji: '⚽' },
+  { id: 'bundesliga', nome: 'Bundesliga 🇩🇪', emoji: '⚽' },
+  { id: 'ligue-1', nome: 'Ligue 1 🇫🇷', emoji: '⚽' },
+  { id: 'champions-league', nome: 'Champions League 🏆', emoji: '🏆' },
+  { id: 'europa-league', nome: 'Europa League', emoji: '🏆' },
+  { id: 'nba', nome: 'NBA 🏀', emoji: '🏀' },
+  { id: 'nfl', nome: 'NFL 🏈', emoji: '🏈' },
+  { id: 'altro', nome: 'Altro', emoji: '📋' }
+];
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [campionatoSelezionato, setCampionatoSelezionato] = useState('serie-a');
+  const [dataSelezionata, setDataSelezionata] = useState(new Date().toISOString().split('T')[0]);
+  const [pronostici, setPronostici] = useState([]);
+  const [vistaCorrente, setVistaCorrente] = useState('giorno');
+  const [nuovoPronostico, setNuovoPronostico] = useState({ partita: '', pronostico: '', quota: '' });
+  const [commenti, setCommenti] = useState({});
+  const [nuovoCommento, setNuovoCommento] = useState({});
+  const [nomeUtente, setNomeUtente] = useState('');
+  const [mostraCommenti, setMostraCommenti] = useState({});
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [mostraRegistrazione, setMostraRegistrazione] = useState(false);
+  const [partiteDisponibili, setPartiteDisponibili] = useState([]);
+  const [partitaSelezionata, setPartitaSelezionata] = useState(null);
+  const [pronosticoSelezionato, setPronosticoSelezionato] = useState('');
+  const [suggerimentiPartite, setSuggerimentiPartite] = useState({});
+  const [nuovoSuggerimento, setNuovoSuggerimento] = useState({});
+  const [mostraSuggerimenti, setMostraSuggerimenti] = useState({});
+  const [mostraPartite, setMostraPartite] = useState(true);
+  const [ultimoBatch, setUltimoBatch] = useState(null);
+  const [partiteUltimoBatch, setPartiteUltimoBatch] = useState([]);
+
+  useEffect(() => {
+    checkUser();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => authListener?.subscription?.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user !== undefined) {
+      caricaPronostici();
+      caricaPartite();
+    }
+  }, [campionatoSelezionato, dataSelezionata, vistaCorrente, user]);
+
+  async function checkUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user || null);
+    setLoading(false);
+  }
+
+  const isAdmin = user?.id === ADMIN_USER_ID;
+
+  async function login(e) {
+    e.preventDefault();
+    try {
+      const { error } = await supabase.auth.signInWithPassword(loginData);
+      if (error) throw error;
+    } catch (error) {
+      alert('Errore login: ' + error.message);
+    }
+  }
+
+  async function registrazione(e) {
+    e.preventDefault();
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: loginData.email,
+        password: loginData.password
+      });
+      if (error) throw error;
+      alert('Registrazione completata! Ora puoi accedere.');
+      setMostraRegistrazione(false);
+    } catch (error) {
+      alert('Errore registrazione: ' + error.message);
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+  }
+
+  async function caricaPronostici() {
+    try {
+      setLoading(true);
+      let query = supabase.from('pronostici').select('*').eq('campionato', campionatoSelezionato);
+      if (vistaCorrente === 'giorno') {
+        query = query.eq('data_partita', dataSelezionata);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      setPronostici(data || []);
+      
+      data?.forEach(p => caricaCommenti(p.id));
+    } catch (error) {
+      console.error('Errore caricamento:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function caricaPartite() {
+    try {
+      let query = supabase.from('partite').select('*').eq('campionato', campionatoSelezionato);
+      if (vistaCorrente === 'giorno') {
+        query = query.eq('data_partita', dataSelezionata);
+      }
+      const { data, error } = await query.order('data_partita', { ascending: true });
+      if (error) throw error;
+      setPartiteDisponibili(data || []);
+      
+      // Trova l'ultimo batch di importazione
+      if (data && data.length > 0) {
+        const batches = data.map(p => new Date(p.batch_importazione).getTime());
+        const maxBatch = Math.max(...batches);
+        setUltimoBatch(maxBatch);
+        
+        // Filtra solo le partite dell'ultimo batch
+        const partiteRecenti = data.filter(p => 
+          new Date(p.batch_importazione).getTime() === maxBatch
+        );
+        setPartiteUltimoBatch(partiteRecenti);
+      } else {
+        setUltimoBatch(null);
+        setPartiteUltimoBatch([]);
+      }
+      
+      // Carica suggerimenti per ogni partita
+      data?.forEach(p => caricaSuggerimentiPartita(p.id));
+    } catch (error) {
+      console.error('Errore caricamento partite:', error.message);
+    }
+  }
+
+  async function caricaSuggerimentiPartita(partitaId) {
+    try {
+      const { data, error } = await supabase
+        .from('suggerimenti_partite')
+        .select('*')
+        .eq('partita_id', partitaId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setSuggerimentiPartite(prev => ({ ...prev, [partitaId]: data || [] }));
+    } catch (error) {
+      console.error('Errore caricamento suggerimenti:', error.message);
+    }
+  }
+
+  async function aggiungiSuggerimento(partitaId) {
+    if (!nuovoSuggerimento[partitaId]?.trim() || !nomeUtente.trim()) {
+      alert('Inserisci nome e suggerimento!');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('suggerimenti_partite').insert([{
+        partita_id: partitaId,
+        user_id: user?.id || null,
+        nome_utente: nomeUtente,
+        suggerimento: nuovoSuggerimento[partitaId]
+      }]);
+      if (error) throw error;
+      setNuovoSuggerimento(prev => ({ ...prev, [partitaId]: '' }));
+      caricaSuggerimentiPartita(partitaId);
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  function scaricaTemplate() {
+    const template = `SQUADRA_CASA\tSQUADRA_TRASFERTA\tCAMPIONATO\tDATA\tQUOTA_1\tQUOTA_X\tQUOTA_2\tQUOTA_NOGOL\tQUOTA_GOL\tQUOTA_UNDER_15\tQUOTA_OVER_15\tQUOTA_UNDER_25\tQUOTA_OVER_25\tQUOTA_UNDER_35\tQUOTA_OVER_35\tQUOTA_1X\tQUOTA_12\tQUOTA_X2
+Inter\tMilan\tserie-a\t2024-12-15\t2.10\t3.40\t3.50\t2.80\t1.40\t1.20\t4.50\t1.50\t2.60\t2.20\t1.65\t1.30\t1.25\t1.60
+Juventus\tNapoli\tserie-a\t2024-12-15\t1.85\t3.60\t4.20\t3.00\t1.35\t1.15\t5.00\t1.45\t2.75\t2.30\t1.60\t1.20\t1.18\t1.75`;
+    
+    const blob = new Blob([template], { type: 'text/tab-separated-values' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_partite.tsv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importaExcel(file) {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      const headers = lines[0].split('\t');
+      const partite = [];
+      
+      // Timestamp univoco per questo batch di importazione
+      const batchTimestamp = new Date().toISOString();
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split('\t');
+        if (values.length < headers.length) continue;
+
+        const partita = {
+          squadra_casa: values[0]?.trim(),
+          squadra_trasferta: values[1]?.trim(),
+          campionato: values[2]?.trim(),
+          data_partita: values[3]?.trim(),
+          quota_1: parseFloat(values[4]) || null,
+          quota_x: parseFloat(values[5]) || null,
+          quota_2: parseFloat(values[6]) || null,
+          quota_nogol: parseFloat(values[7]) || null,
+          quota_gol: parseFloat(values[8]) || null,
+          quota_under_15: parseFloat(values[9]) || null,
+          quota_over_15: parseFloat(values[10]) || null,
+          quota_under_25: parseFloat(values[11]) || null,
+          quota_over_25: parseFloat(values[12]) || null,
+          quota_under_35: parseFloat(values[13]) || null,
+          quota_over_35: parseFloat(values[14]) || null,
+          quota_1x: parseFloat(values[15]) || null,
+          quota_12: parseFloat(values[16]) || null,
+          quota_x2: parseFloat(values[17]) || null,
+          user_id: user.id,
+          batch_importazione: batchTimestamp
+        };
+        
+        if (partita.squadra_casa && partita.squadra_trasferta) {
+          partite.push(partita);
+        }
+      }
+
+      if (partite.length === 0) {
+        alert('Nessuna partita valida trovata nel file');
+        return;
+      }
+
+      const { error } = await supabase.from('partite').insert(partite);
+      if (error) throw error;
+
+      alert(`✅ ${partite.length} partite importate con successo!`);
+      caricaPartite();
+    } catch (error) {
+      alert('Errore importazione: ' + error.message);
+    }
+  }
+
+  async function caricaCommenti(pronosticoId) {
+    try {
+      const { data, error } = await supabase
+        .from('commenti')
+        .select('*')
+        .eq('pronostico_id', pronosticoId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setCommenti(prev => ({ ...prev, [pronosticoId]: data || [] }));
+    } catch (error) {
+      console.error('Errore caricamento commenti:', error.message);
+    }
+  }
+
+  async function aggiungiPronostico(e) {
+    e.preventDefault();
+    if (!nuovoPronostico.partita || !nuovoPronostico.pronostico || !nuovoPronostico.quota) {
+      alert('Compila tutti i campi!');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: nuovoPronostico.partita,
+        pronostico: nuovoPronostico.pronostico,
+        quota: parseFloat(nuovoPronostico.quota),
+        stato: 'pending',
+        campionato: campionatoSelezionato,
+        data_partita: dataSelezionata,
+        user_id: user.id
+      }]);
+      if (error) throw error;
+      setNuovoPronostico({ partita: '', pronostico: '', quota: '' });
+      caricaPronostici();
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiungiPronosticoDaPartita(e) {
+    e.preventDefault();
+    if (!partitaSelezionata || !pronosticoSelezionato) {
+      alert('Seleziona una partita e un pronostico!');
+      return;
+    }
+
+    const partita = partiteDisponibili.find(p => p.id === partitaSelezionata);
+    if (!partita) return;
+
+    const nomePartita = `${partita.squadra_casa} vs ${partita.squadra_trasferta}`;
+    let quota = 0;
+    let tipoPronostico = '';
+
+    switch(pronosticoSelezionato) {
+      case '1': quota = partita.quota_1; tipoPronostico = '1 (Casa)'; break;
+      case 'X': quota = partita.quota_x; tipoPronostico = 'X (Pareggio)'; break;
+      case '2': quota = partita.quota_2; tipoPronostico = '2 (Trasferta)'; break;
+      case 'NOGOL': quota = partita.quota_nogol; tipoPronostico = 'No Gol'; break;
+      case 'GOL': quota = partita.quota_gol; tipoPronostico = 'Gol'; break;
+      case 'UNDER15': quota = partita.quota_under_15; tipoPronostico = 'Under 1.5'; break;
+      case 'OVER15': quota = partita.quota_over_15; tipoPronostico = 'Over 1.5'; break;
+      case 'UNDER25': quota = partita.quota_under_25; tipoPronostico = 'Under 2.5'; break;
+      case 'OVER25': quota = partita.quota_over_25; tipoPronostico = 'Over 2.5'; break;
+      case 'UNDER35': quota = partita.quota_under_35; tipoPronostico = 'Under 3.5'; break;
+      case 'OVER35': quota = partita.quota_over_35; tipoPronostico = 'Over 3.5'; break;
+      case '1X': quota = partita.quota_1x; tipoPronostico = '1X'; break;
+      case '12': quota = partita.quota_12; tipoPronostico = '12'; break;
+      case 'X2': quota = partita.quota_x2; tipoPronostico = 'X2'; break;
+    }
+
+    if (!quota) {
+      alert('Quota non disponibile per questo pronostico');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: nomePartita,
+        pronostico: tipoPronostico,
+        quota: quota,
+        stato: 'pending',
+        campionato: partita.campionato,
+        data_partita: partita.data_partita,
+        user_id: user.id,
+        partita_id: partita.id
+      }]);
+      if (error) throw error;
+      
+      setPartitaSelezionata(null);
+      setPronosticoSelezionato('');
+      caricaPronostici();
+      alert('Pronostico aggiunto con successo!');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiungiPronosticoVeloce(partitaId, tipoPronostico) {
+    const partita = partiteDisponibili.find(p => p.id === partitaId);
+    if (!partita) return;
+
+    const nomePartita = `${partita.squadra_casa} vs ${partita.squadra_trasferta}`;
+    let quota = 0;
+    let label = '';
+
+    switch(tipoPronostico) {
+      case '1': quota = partita.quota_1; label = '1 (Casa)'; break;
+      case 'X': quota = partita.quota_x; label = 'X (Pareggio)'; break;
+      case '2': quota = partita.quota_2; label = '2 (Trasferta)'; break;
+      case 'NOGOL': quota = partita.quota_nogol; label = 'No Gol'; break;
+      case 'GOL': quota = partita.quota_gol; label = 'Gol'; break;
+      case 'UNDER25': quota = partita.quota_under_25; label = 'Under 2.5'; break;
+      case 'OVER25': quota = partita.quota_over_25; label = 'Over 2.5'; break;
+      case '1X': quota = partita.quota_1x; label = '1X'; break;
+      case '12': quota = partita.quota_12; label = '12'; break;
+      case 'X2': quota = partita.quota_x2; label = 'X2'; break;
+    }
+
+    if (!quota) {
+      alert('Quota non disponibile');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: nomePartita,
+        pronostico: label,
+        quota: quota,
+        stato: 'pending',
+        campionato: partita.campionato,
+        data_partita: partita.data_partita,
+        user_id: user.id,
+        partita_id: partita.id
+      }]);
+      if (error) throw error;
+      caricaPronostici();
+      alert('✅ Pronostico aggiunto!');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiornaStato(id, nuovoStato) {
+    try {
+      const { error } = await supabase.from('pronostici').update({ stato: nuovoStato }).eq('id', id);
+      if (error) throw error;
+      caricaPronostici();
+    } catch (error) {
+      console.error('Errore aggiornamento:', error.message);
+    }
+  }
+
+  async function eliminaPronostico(id) {
+    if (!confirm('Sei sicuro?')) return;
+    try {
+      const { error } = await supabase.from('pronostici').delete().eq('id', id);
+      if (error) throw error;
+      caricaPronostici();
+    } catch (error) {
+      console.error('Errore eliminazione:', error.message);
+    }
+  }
+
+  async function eliminaPartita(id) {
+    if (!confirm('Sei sicuro di voler eliminare questa partita? Verranno eliminati anche tutti i pronostici e suggerimenti collegati.')) return;
+    try {
+      const { error } = await supabase.from('partite').delete().eq('id', id);
+      if (error) throw error;
+      caricaPartite();
+      caricaPronostici();
+      alert('✅ Partita eliminata con successo!');
+    } catch (error) {
+      console.error('Errore eliminazione partita:', error.message);
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiungiCommento(pronosticoId) {
+    if (!nuovoCommento[pronosticoId]?.trim() || !nomeUtente.trim()) {
+      alert('Inserisci nome e commento!');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('commenti').insert([{
+        pronostico_id: pronosticoId,
+        user_id: user?.id || null,
+        nome_utente: nomeUtente,
+        testo: nuovoCommento[pronosticoId]
+      }]);
+      if (error) throw error;
+      setNuovoCommento(prev => ({ ...prev, [pronosticoId]: '' }));
+      caricaCommenti(pronosticoId);
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  function cambiaGiorno(direzione) {
+    const d = new Date(dataSelezionata);
+    d.setDate(d.getDate() + direzione);
+    setDataSelezionata(d.toISOString().split('T')[0]);
+  }
+
+  function formattaData(data) {
+    const d = new Date(data + 'T00:00:00');
+    const oggi = new Date();
+    oggi.setHours(0, 0, 0, 0);
+    const domani = new Date(oggi);
+    domani.setDate(domani.getDate() + 1);
+    const dataOggetto = new Date(d);
+    dataOggetto.setHours(0, 0, 0, 0);
+    if (dataOggetto.getTime() === oggi.getTime()) return 'Oggi';
+    if (dataOggetto.getTime() === domani.getTime()) return 'Domani';
+    return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  const statistiche = {
+    totali: pronostici.length,
+    vinti: pronostici.filter(p => p.stato === 'win').length,
+    persi: pronostici.filter(p => p.stato === 'loss').length,
+    pending: pronostici.filter(p => p.stato === 'pending').length
+  };
+
+  const campionatoCorrente = CAMPIONATI.find(c => c.id === campionatoSelezionato);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-2xl text-gray-600">Caricamento...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">⚽ Pronostici</h1>
+          
+          {!mostraRegistrazione ? (
+            <>
+              <form onSubmit={login} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={loginData.email}
+                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                  Accedi
+                </button>
+              </form>
+              <button 
+                onClick={() => setMostraRegistrazione(true)}
+                className="w-full mt-3 text-blue-600 hover:underline text-sm"
+              >
+                Non hai un account? Registrati qui
+              </button>
+            </>
+          ) : (
+            <>
+              <form onSubmit={registrazione} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={loginData.email}
+                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password (min 6 caratteri)</label>
+                  <input
+                    type="password"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    minLength="6"
+                    required
+                  />
+                </div>
+                <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">
+                  Registrati
+                </button>
+              </form>
+              <button 
+                onClick={() => setMostraRegistrazione(false)}
+                className="w-full mt-3 text-blue-600 hover:underline text-sm"
+              >
+                Hai già un account? Accedi qui
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">⚽ Gestione Pronostici</h1>
+              <p className="text-gray-600">
+                {isAdmin ? '👑 Modalità Admin' : '👀 Modalità Visualizzazione'}
+              </p>
+            </div>
+            <button onClick={logout} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+              Esci
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Seleziona Campionato</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {CAMPIONATI.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCampionatoSelezionato(c.id)}
+                className={`p-3 rounded-lg font-medium transition ${
+                  campionatoSelezionato === c.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="text-2xl mb-1">{c.emoji}</div>
+                <div className="text-sm">{c.nome.replace(/[🇮🇹🏴󠁧󠁢󠁥󠁮󠁧󠁿🇪🇸🇩🇪🇫🇷🏆🏀🏈📋]/g, '').trim()}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">{campionatoCorrente?.emoji} {campionatoCorrente?.nome}</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{statistiche.totali}</div>
+                  <div className="text-xs text-gray-600">Totali</div>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{statistiche.vinti}</div>
+                  <div className="text-xs text-gray-600">Vinti</div>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600">{statistiche.persi}</div>
+                  <div className="text-xs text-gray-600">Persi</div>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{statistiche.pending}</div>
+                  <div className="text-xs text-gray-600">In attesa</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 Seleziona Data</h3>
+              <div className="flex gap-2 mb-4">
+                <button onClick={() => setVistaCorrente('giorno')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${vistaCorrente === 'giorno' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Per Giorno</button>
+                <button onClick={() => setVistaCorrente('tutti')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${vistaCorrente === 'tutti' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Tutti</button>
+              </div>
+              {vistaCorrente === 'giorno' && (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <button onClick={() => cambiaGiorno(-1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">←</button>
+                    <span className="font-medium text-gray-800 flex-1 text-center">{formattaData(dataSelezionata)}</span>
+                    <button onClick={() => cambiaGiorno(1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">→</button>
+                  </div>
+                  <input type="date" value={dataSelezionata} onChange={(e) => setDataSelezionata(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </>
+              )}
+            </div>
+
+            {isAdmin && (
+              <>
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">📥 Importa Partite</h2>
+                  <div className="space-y-3">
+                    <button
+                      onClick={scaricaTemplate}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
+                    >
+                      <span>📄</span> Scarica Template Excel
+                    </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Carica file Excel/TSV
+                      </label>
+                      <input
+                        type="file"
+                        accept=".tsv,.txt,.csv"
+                        onChange={(e) => e.target.files[0] && importaExcel(e.target.files[0])}
+                        className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Formato: TSV (Tab Separated Values)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Aggiungi da Partite</h2>
+                  {partiteUltimoBatch.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      Nessuna partita nell'ultima importazione. Importa nuove partite.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs text-green-700 font-medium">
+                          📥 Ultima importazione: {partiteUltimoBatch.length} partite
+                        </p>
+                      </div>
+                      <form onSubmit={aggiungiPronosticoDaPartita} className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Seleziona Partita (ultima importazione)
+                          </label>
+                          <select
+                            value={partitaSelezionata || ''}
+                            onChange={(e) => setPartitaSelezionata(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-- Seleziona partita --</option>
+                            {partiteUltimoBatch.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.squadra_casa} vs {p.squadra_trasferta} ({formattaData(p.data_partita)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {partitaSelezionata && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Seleziona Pronostico
+                            </label>
+                            <select
+                              value={pronosticoSelezionato}
+                              onChange={(e) => setPronosticoSelezionato(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">-- Seleziona pronostico --</option>
+                              {(() => {
+                                const p = partiteDisponibili.find(pt => pt.id === partitaSelezionata);
+                                if (!p) return null;
+                                return (
+                                  <>
+                                    {p.quota_1 && <option value="1">1 (Casa) - {p.quota_1}</option>}
+                                    {p.quota_x && <option value="X">X (Pareggio) - {p.quota_x}</option>}
+                                    {p.quota_2 && <option value="2">2 (Trasferta) - {p.quota_2}</option>}
+                                    {p.quota_nogol && <option value="NOGOL">No Gol - {p.quota_nogol}</option>}
+                                    {p.quota_gol && <option value="GOL">Gol - {p.quota_gol}</option>}
+                                    {p.quota_under_15 && <option value="UNDER15">Under 1.5 - {p.quota_under_15}</option>}
+                                    {p.quota_over_15 && <option value="OVER15">Over 1.5 - {p.quota_over_15}</option>}
+                                    {p.quota_under_25 && <option value="UNDER25">Under 2.5 - {p.quota_under_25}</option>}
+                                    {p.quota_over_25 && <option value="OVER25">Over 2.5 - {p.quota_over_25}</option>}
+                                    {p.quota_under_35 && <option value="UNDER35">Under 3.5 - {p.quota_under_35}</option>}
+                                    {p.quota_over_35 && <option value="OVER35">Over 3.5 - {p.quota_over_35}</option>}
+                                    {p.quota_1x && <option value="1X">1X - {p.quota_1x}</option>}
+                                    {p.quota_12 && <option value="12">12 - {p.quota_12}</option>}
+                                    {p.quota_x2 && <option value="X2">X2 - {p.quota_x2}</option>}
+                                  </>
+                                );
+                              })()}
+                            </select>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+                        >
+                          Aggiungi Pronostico
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">✍️ Inserimento Manuale</h2>
+                  <form onSubmit={aggiungiPronostico} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Partita</label>
+                      <input type="text" value={nuovoPronostico.partita} onChange={(e) => setNuovoPronostico({...nuovoPronostico, partita: e.target.value})} placeholder="es. Inter vs Milan" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pronostico</label>
+                      <input type="text" value={nuovoPronostico.pronostico} onChange={(e) => setNuovoPronostico({...nuovoPronostico, pronostico: e.target.value})} placeholder="es. 1X, Over 2.5" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                      <input type="number" step="0.01" value={nuovoPronostico.quota} onChange={(e) => setNuovoPronostico({...nuovoPronostico, quota: e.target.value})} placeholder="es. 1.85" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">Aggiungi Pronostico</button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="lg:col-span-2">
+            {/* Toggle tra Pronostici e Partite */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMostraPartite(false)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
+                    !mostraPartite ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  🎯 I Miei Pronostici
+                </button>
+                <button
+                  onClick={() => setMostraPartite(true)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
+                    mostraPartite ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  ⚽ Tutte le Partite
+                </button>
+              </div>
+            </div>
+
+            {!mostraPartite ? (
+              /* SEZIONE PRONOSTICI */
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">I Miei Pronostici {vistaCorrente === 'giorno' ? `- ${formattaData(dataSelezionata)}` : ''}</h2>
+                {loading ? (
+                  <div className="text-center py-12 text-gray-500">Caricamento...</div>
+                ) : pronostici.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="text-4xl mb-3">📋</div>
+                    <p>Nessun pronostico disponibile.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pronostici.map((p) => (
+                      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-gray-800 text-lg">{p.partita}</h3>
+                              {vistaCorrente === 'tutti' && (
+                                <span className="text-xs bg-gray-100 px-2 py-1 rounded">{formattaData(p.data_partita)}</span>
+                              )}
+                            </div>
+                            <p className="text-gray-600 mt-1"><span className="font-medium">Pronostico:</span> {p.pronostico}</p>
+                            <p className="text-gray-600"><span className="font-medium">Quota:</span> {p.quota}</p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳ In attesa'}
+                          </span>
+                        </div>
+                        
+                        {isAdmin && (
+                          <div className="flex gap-2 mt-3 mb-3">
+                            {p.stato === 'pending' && (
+                              <>
+                                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Vinto</button>
+                                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Perso</button>
+                              </>
+                            )}
+                            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm ml-auto">Elimina</button>
+                          </div>
+                        )}
+
+                        <div className="border-t pt-3 mt-3">
+                          <button onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} className="text-sm text-blue-600 hover:underline mb-2">
+                            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
+                          </button>
+                          
+                          {mostraCommenti[p.id] && (
+                            <div className="mt-3 space-y-3">
+                              {commenti[p.id]?.map((c) => (
+                                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
+                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString('it-IT')}</span>
+                                  </div>
+                                  <p className="text-gray-700 text-sm">{c.testo}</p>
+                                </div>
+                              ))}
+                              
+                              <div className="mt-3">
+                                <input
+                                  type="text"
+                                  value={nomeUtente}
+                                  onChange={(e) => setNomeUtente(e.target.value)}
+                                  placeholder="Il tuo nome"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={nuovoCommento[p.id] || ''}
+                                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                    placeholder="Scrivi un commento..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Invia</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* SEZIONE PARTITE */
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Tutte le Partite {vistaCorrente === 'giorno' ? `- ${formattaData(dataSelezionata)}` : ''}</h2>
+                {loading ? (
+                  <div className="text-center py-12 text-gray-500">Caricamento...</div>
+                ) : partiteDisponibili.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="text-4xl mb-3">⚽</div>
+                    <p>Nessuna partita disponibile.</p>
+                    {isAdmin && <p className="text-sm mt-2">Importa le partite dal menu a sinistra.</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {partiteDisponibili.map((partita) => (
+                      <div key={partita.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-gray-800 text-lg mb-1">
+                              {partita.squadra_casa} vs {partita.squadra_trasferta}
+                            </h3>
+                            {vistaCorrente === 'tutti' && (
+                              <span className="text-sm text-gray-600">📅 {formattaData(partita.data_partita)}</span>
+                            )}
+                          </div>
+                          {isAdmin && (
+                            <button
+                              onClick={() => eliminaPartita(partita.id)}
+                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-medium ml-3"
+                              title="Elimina partita"
+                            >
+                              🗑️ Elimina
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Pulsanti veloci per pronostici - Solo Admin */}
+                        {isAdmin && (
+                          <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">⚡ Aggiungi Pronostico Veloce:</p>
+                            <div className="grid grid-cols-5 gap-2">
+                              {partita.quota_1 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '1')} className="px-2 py-1 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600">
+                                  1<br/>{partita.quota_1}
+                                </button>
+                              )}
+                              {partita.quota_x && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'X')} className="px-2 py-1 bg-gray-500 text-white rounded text-xs font-semibold hover:bg-gray-600">
+                                  X<br/>{partita.quota_x}
+                                </button>
+                              )}
+                              {partita.quota_2 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '2')} className="px-2 py-1 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600">
+                                  2<br/>{partita.quota_2}
+                                </button>
+                              )}
+                              {partita.quota_gol && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'GOL')} className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600">
+                                  GOL<br/>{partita.quota_gol}
+                                </button>
+                              )}
+                              {partita.quota_nogol && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'NOGOL')} className="px-2 py-1 bg-purple-500 text-white rounded text-xs font-semibold hover:bg-purple-600">
+                                  NG<br/>{partita.quota_nogol}
+                                </button>
+                              )}
+                              {partita.quota_over_25 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'OVER25')} className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-semibold hover:bg-orange-600">
+                                  O2.5<br/>{partita.quota_over_25}
+                                </button>
+                              )}
+                              {partita.quota_under_25 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'UNDER25')} className="px-2 py-1 bg-indigo-500 text-white rounded text-xs font-semibold hover:bg-indigo-600">
+                                  U2.5<br/>{partita.quota_under_25}
+                                </button>
+                              )}
+                              {partita.quota_1x && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '1X')} className="px-2 py-1 bg-teal-500 text-white rounded text-xs font-semibold hover:bg-teal-600">
+                                  1X<br/>{partita.quota_1x}
+                                </button>
+                              )}
+                              {partita.quota_12 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '12')} className="px-2 py-1 bg-pink-500 text-white rounded text-xs font-semibold hover:bg-pink-600">
+                                  12<br/>{partita.quota_12}
+                                </button>
+                              )}
+                              {partita.quota_x2 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'X2')} className="px-2 py-1 bg-yellow-500 text-white rounded text-xs font-semibold hover:bg-yellow-600">
+                                  X2<br/>{partita.quota_x2}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Suggerimenti utenti */}
+                        <div className="border-t pt-3">
+                          <button 
+                            onClick={() => setMostraSuggerimenti(prev => ({ ...prev, [partita.id]: !prev[partita.id] }))} 
+                            className="text-sm text-blue-600 hover:underline mb-2"
+                          >
+                            {mostraSuggerimenti[partita.id] ? '▼' : '▶'} Suggerimenti ({suggerimentiPartite[partita.id]?.length || 0})
+                          </button>
+                          
+                          {mostraSuggerimenti[partita.id] && (
+                            <div className="mt-3 space-y-3">
+                              {suggerimentiPartite[partita.id]?.map((s) => (
+                                <div key={s.id} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-800">💡 {s.nome_utente}</span>
+                                    <span className="text-xs text-gray-500">{new Date(s.created_at).toLocaleString('it-IT')}</span>
+                                  </div>
+                                  <p className="text-gray-700 text-sm font-medium">{s.suggerimento}</p>
+                                </div>
+                              ))}
+                              
+                              <div className="mt-3">
+                                <input
+                                  type="text"
+                                  value={nomeUtente}
+                                  onChange={(e) => setNomeUtente(e.target.value)}
+                                  placeholder="Il tuo nome"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={nuovoSuggerimento[partita.id] || ''}
+                                    onChange={(e) => setNuovoSuggerimento(prev => ({ ...prev, [partita.id]: e.target.value }))}
+                                    placeholder="Suggerisci un pronostico (es: 1X quota 1.50)..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <button onClick={() => aggiungiSuggerimento(partita.id)} className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-semibold">
+                                    💡 Suggerisci
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
