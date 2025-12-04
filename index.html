@@ -24,23 +24,23 @@ const ADMIN_USER_ID = '1b2932fe-9d8e-4518-a8cf-79ae5cf98bcd';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const CAMPIONATI = [
-  { id: 'serie-a', nome: 'Serie A 🇮🇹', emoji: '⚽' },
-  { id: 'serie-b', nome: 'Serie B 🇮🇹', emoji: '⚽' },
-  { id: 'premier-league', nome: 'Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿', emoji: '⚽' },
-  { id: 'championship', nome: 'Championship 🏴󠁧󠁢󠁥󠁮󠁧󠁿', emoji: '⚽' },
-  { id: 'la-liga', nome: 'La Liga 🇪🇸', emoji: '⚽' },
-  { id: 'la-liga-2', nome: 'La Liga 2 🇪🇸', emoji: '⚽' },
-  { id: 'bundesliga', nome: 'Bundesliga 🇩🇪', emoji: '⚽' },
-  { id: 'bundesliga-2', nome: 'Bundesliga 2 🇩🇪', emoji: '⚽' },
-  { id: 'ligue-1', nome: 'Ligue 1 🇫🇷', emoji: '⚽' },
-  { id: 'ligue-2', nome: 'Ligue 2 🇫🇷', emoji: '⚽' },
-  { id: 'jupiler-pro-league', nome: 'Jupiler Pro League 🇧🇪', emoji: '⚽' },
-  { id: 'eredivisie', nome: 'Eredivisie 🇳🇱', emoji: '⚽' },
-  { id: 'eerste-divisie', nome: 'Eerste Divisie 🇳🇱', emoji: '⚽' },
-  { id: 'liga-portugal', nome: 'Liga Portugal 🇵🇹', emoji: '⚽' },
-  { id: 'superliga', nome: 'Superliga 🇩🇰', emoji: '⚽' },
-  { id: 'super-lig', nome: 'Süper Lig 🇹🇷', emoji: '⚽' },
-  { id: 'altro', nome: 'Altro', emoji: '📋' }
+  { id: 'serie-a', nome: 'Serie A (Italia)', emoji: '🇮🇹', logo: 'https://media.api-sports.io/football/leagues/135.png' },
+  { id: 'serie-b', nome: 'Serie B (Italia)', emoji: '🇮🇹', logo: 'https://media.api-sports.io/football/leagues/136.png' },
+  { id: 'premier-league', nome: 'Premier League (Inghilterra)', emoji: '🏴', logo: 'https://media.api-sports.io/football/leagues/39.png' },
+  { id: 'championship', nome: 'Championship (Inghilterra)', emoji: '🏴', logo: 'https://media.api-sports.io/football/leagues/40.png' },
+  { id: 'la-liga', nome: 'La Liga (Spagna)', emoji: '🇪🇸', logo: 'https://media.api-sports.io/football/leagues/140.png' },
+  { id: 'la-liga-2', nome: 'La Liga 2 (Spagna)', emoji: '🇪🇸', logo: 'https://media.api-sports.io/football/leagues/141.png' },
+  { id: 'bundesliga', nome: 'Bundesliga (Germania)', emoji: '🇩🇪', logo: 'https://media.api-sports.io/football/leagues/78.png' },
+  { id: 'bundesliga-2', nome: 'Bundesliga 2 (Germania)', emoji: '🇩🇪', logo: 'https://media.api-sports.io/football/leagues/79.png' },
+  { id: 'ligue-1', nome: 'Ligue 1 (Francia)', emoji: '🇫🇷', logo: 'https://media.api-sports.io/football/leagues/61.png' },
+  { id: 'ligue-2', nome: 'Ligue 2 (Francia)', emoji: '🇫🇷', logo: 'https://media.api-sports.io/football/leagues/62.png' },
+  { id: 'jupiler-pro-league', nome: 'Jupiler Pro League (Belgio)', emoji: '🇧🇪', logo: 'https://media.api-sports.io/football/leagues/144.png' },
+  { id: 'eredivisie', nome: 'Eredivisie (Olanda)', emoji: '🇳🇱', logo: 'https://media.api-sports.io/football/leagues/88.png' },
+  { id: 'eerste-divisie', nome: 'Eerste Divisie (Olanda)', emoji: '🇳🇱', logo: 'https://media.api-sports.io/football/leagues/89.png' },
+  { id: 'liga-portugal', nome: 'Liga Portugal', emoji: '🇵🇹', logo: 'https://media.api-sports.io/football/leagues/94.png' },
+  { id: 'superliga', nome: 'Superliga (Danimarca)', emoji: '🇩🇰', logo: 'https://media.api-sports.io/football/leagues/119.png' },
+  { id: 'super-lig', nome: 'Süper Lig (Turchia)', emoji: '🇹🇷', logo: 'https://media.api-sports.io/football/leagues/203.png' },
+  { id: 'altro', nome: 'Altro', emoji: '⚽', logo: null }
 ];
 
 function App() {
@@ -633,8 +633,16 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   campionatoSelezionato === c.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                <div className="text-2xl mb-1">{c.emoji}</div>
-                <div className="text-sm">{c.nome.replace(/[🇮🇹🏴󠁧󠁢󠁥󠁮󠁧󠁿🇪🇸🇩🇪🇫🇷🏆🏀🏈📋]/g, '').trim()}</div>
+                {c.logo ? (
+                  <img 
+                    src={c.logo} 
+                    alt={c.nome}
+                    className="w-12 h-12 mx-auto mb-1 object-contain"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                  />
+                ) : null}
+                <div className="text-2xl mb-1" style={{ display: c.logo ? 'none' : 'block' }}>{c.emoji}</div>
+                <div className="text-xs">{c.nome.replace(/\(.*?\)/g, '').trim()}</div>
               </button>
             ))}
           </div>
@@ -643,7 +651,14 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">{campionatoCorrente?.emoji} {campionatoCorrente?.nome}</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                {campionatoCorrente?.logo ? (
+                  <img src={campionatoCorrente.logo} alt={campionatoCorrente.nome} className="w-8 h-8 object-contain" />
+                ) : (
+                  <span>{campionatoCorrente?.emoji}</span>
+                )}
+                {campionatoCorrente?.nome}
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 p-3 rounded-lg text-center">
                   <div className="text-2xl font-bold text-blue-600">{statistiche.totali}</div>
