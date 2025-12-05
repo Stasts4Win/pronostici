@@ -70,7 +70,9 @@ function App() {
   const [ultimoBatch, setUltimoBatch] = useState(null);
   const [partiteUltimoBatch, setPartiteUltimoBatch] = useState([]);
   const [loadingAPI, setLoadingAPI] = useState(false);
+  const [modalitaImportAPI, setModalitaImportAPI] = useState('prossime'); // 'prossime' o 'data'
   const [dataImportAPI, setDataImportAPI] = useState(new Date().toISOString().split('T')[0]);
+  const [numeroGiorniAPI, setNumeroGiorniAPI] = useState(7);
 
   useEffect(() => {
     checkUser();
@@ -312,21 +314,42 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
     try {
       setLoadingAPI(true);
       
-      // Chiama API-Football per ottenere le prossime partite
-      const response = await fetch(
-        `https://v3.football.api-sports.io/fixtures?league=${campionato.apiLeagueId}&season=2024&date=${dataImportAPI}`,
-        {
-          method: 'GET',
-          headers: {
-            'x-apisports-key': API_FOOTBALL_KEY
-          }
+      // Determina la stagione corrente
+      const oggi = new Date();
+      const annoCorrente = oggi.getFullYear();
+      const meseCorrente = oggi.getMonth() + 1; // 0-11, quindi +1
+      // Se siamo prima di agosto, la stagione è l'anno precedente
+      const stagione = meseCorrente < 8 ? annoCorrente - 1 : annoCorrente;
+      
+      let url;
+      if (modalitaImportAPI === 'prossime') {
+        // Importa le prossime X partite
+        url = `https://v3.football.api-sports.io/fixtures?league=${campionato.apiLeagueId}&season=${stagione}&next=${numeroGiorniAPI}`;
+      } else {
+        // Importa partite di una data specifica
+        url = `https://v3.football.api-sports.io/fixtures?league=${campionato.apiLeagueId}&season=${stagione}&date=${dataImportAPI}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-apisports-key': API_FOOTBALL_KEY
         }
-      );
+      });
 
       const data = await response.json();
       
+      // Debug: mostra la risposta
+      console.log('Risposta API:', data);
+      
+      if (data.errors && Object.keys(data.errors).length > 0) {
+        alert('❌ Errore API: ' + JSON.stringify(data.errors));
+        setLoadingAPI(false);
+        return;
+      }
+      
       if (!data.response || data.response.length === 0) {
-        alert('Nessuna partita trovata per questa data.');
+        alert(`ℹ️ Nessuna partita trovata per ${campionato.nome} (stagione ${stagione}/${stagione + 1}).\n\nProva con:\n- Un altro campionato\n- Modalità "Prossime partite"\n- Una data diversa`);
         setLoadingAPI(false);
         return;
       }
@@ -342,9 +365,9 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
           squadra_trasferta: match.teams.away.name,
           campionato: campionatoSelezionato,
           data_partita: dataPartita,
-          quota_1: match.odds?.values?.find(o => o.value === 'Home')?.odd || null,
-          quota_x: match.odds?.values?.find(o => o.value === 'Draw')?.odd || null,
-          quota_2: match.odds?.values?.find(o => o.value === 'Away')?.odd || null,
+          quota_1: null,
+          quota_x: null,
+          quota_2: null,
           quota_nogol: null,
           quota_gol: null,
           quota_under_15: null,
@@ -370,9 +393,10 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
       const { error } = await supabase.from('partite').insert(partite);
       if (error) throw error;
 
-      alert(`✅ ${partite.length} partite importate dall'API!`);
+      alert(`✅ ${partite.length} partite importate dall'API!\n\nOra puoi aggiungere le quote manualmente o importarle da un file Excel.`);
       caricaPartite();
     } catch (error) {
+      console.error('Errore completo:', error);
       alert('Errore importazione API: ' + error.message);
     } finally {
       setLoadingAPI(false);
@@ -794,16 +818,61 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                       <h3 className="text-sm font-semibold text-gray-700 mb-3">🌐 Importa da API (Automatico)</h3>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Data partite
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Modalità importazione
                           </label>
-                          <input
-                            type="date"
-                            value={dataImportAPI}
-                            onChange={(e) => setDataImportAPI(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setModalitaImportAPI('prossime')}
+                              className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                                modalitaImportAPI === 'prossime' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              🔜 Prossime partite
+                            </button>
+                            <button
+                              onClick={() => setModalitaImportAPI('data')}
+                              className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                                modalitaImportAPI === 'data' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              📅 Per data
+                            </button>
+                          </div>
                         </div>
+
+                        {modalitaImportAPI === 'prossime' ? (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Numero partite da importare
+                            </label>
+                            <select
+                              value={numeroGiorniAPI}
+                              onChange={(e) => setNumeroGiorniAPI(Number(e.target.value))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="5">Prossime 5 partite</option>
+                              <option value="10">Prossime 10 partite</option>
+                              <option value="15">Prossime 15 partite</option>
+                              <option value="20">Prossime 20 partite</option>
+                              <option value="30">Prossime 30 partite</option>
+                              <option value="50">Prossime 50 partite</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Data partite
+                            </label>
+                            <input
+                              type="date"
+                              value={dataImportAPI}
+                              onChange={(e) => setDataImportAPI(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+
                         <button
                           onClick={importaDaAPI}
                           disabled={loadingAPI}
@@ -816,7 +885,10 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                           )}
                         </button>
                         <p className="text-xs text-gray-500">
-                          Importa automaticamente le partite del campionato selezionato
+                          {modalitaImportAPI === 'prossime' 
+                            ? `Importa le prossime ${numeroGiorniAPI} partite del campionato selezionato`
+                            : 'Importa le partite di una data specifica'
+                          }
                         </p>
                       </div>
                     </div>
