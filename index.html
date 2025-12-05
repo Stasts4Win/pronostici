@@ -314,12 +314,11 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
     try {
       setLoadingAPI(true);
       
-      // Determina la stagione corrente
-      const oggi = new Date();
-      const annoCorrente = oggi.getFullYear();
-      const meseCorrente = oggi.getMonth() + 1; // 0-11, quindi +1
-      // Se siamo prima di agosto, la stagione è l'anno precedente
-      const stagione = meseCorrente < 8 ? annoCorrente - 1 : annoCorrente;
+      // --- MODIFICA PER IL PIANO GRATUITO ---
+// L'API Free limita le stagioni disponibili. Forza la stagione a 2023 o 2024.
+// 2023 è suggerito dall'errore
+const stagione = 2025; // Puoi provare 2024, ma 2023 è garantito dall'errore.
+// --- FINE MODIFICA ---
       
       let url;
       if (modalitaImportAPI === 'prossime') {
