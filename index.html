@@ -32,17 +32,17 @@ const STEMMI_SQUADRE = {
   'Atalanta': 'https://media.api-sports.io/football/teams/499.png',
   'Bologna': 'https://media.api-sports.io/football/teams/500.png',
   'Cagliari': 'https://media.api-sports.io/football/teams/490.png',
-  'Como': 'https://static.flashscore.com/res/image/data/Cf5pQNyS-hpmw8K1h.png',
-  'Cremonese': 'https://static.flashscore.com/res/image/data/EDUhUrDr-t4GQxEM5.png',
+  'Como': 'https://media.api-sports.io/football/teams/515.png',
+  'Cremonese': 'https://media.api-sports.io/football/teams/519.png',
   'Fiorentina': 'https://media.api-sports.io/football/teams/502.png',
   'Genoa': 'https://media.api-sports.io/football/teams/495.png',
   'Inter': 'https://media.api-sports.io/football/teams/505.png',
-  'Juventus': 'https://static.flashscore.com/res/image/data/CbDOFGyS-EXzXDYgS.png',
+  'Juventus': 'https://media.api-sports.io/football/teams/496.png',
   'Lazio': 'https://media.api-sports.io/football/teams/487.png',
   'Lecce': 'https://media.api-sports.io/football/teams/867.png',
   'Napoli': 'https://media.api-sports.io/football/teams/492.png',
-  'Parma': 'https://static.flashscore.com/res/image/data/YcrE7ae5-fydXzLY6.png',
-  'Pisa': 'https://static.flashscore.com/res/image/data/CzC5XtGG-GMOw3SI3.png',
+  'Parma': 'https://media.api-sports.io/football/teams/503.png',
+  'Pisa': 'https://media.api-sports.io/football/teams/514.png',
   'Sassuolo': 'https://media.api-sports.io/football/teams/488.png',
   'Torino': 'https://media.api-sports.io/football/teams/503.png',
   'Udinese': 'https://media.api-sports.io/football/teams/494.png',
@@ -109,6 +109,8 @@ function App() {
   const [mostraPartite, setMostraPartite] = useState(true);
   const [ultimoBatch, setUltimoBatch] = useState(null);
   const [partiteUltimoBatch, setPartiteUltimoBatch] = useState([]);
+  const [suggerimentiSquadre, setSuggerimentiSquadre] = useState({ casa: [], trasferta: [] });
+  const [mostraSuggerimentiSquadre, setMostraSuggerimentiSquadre] = useState({ casa: false, trasferta: false });
 
   useEffect(() => {
     checkUser();
@@ -470,6 +472,31 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
     } catch (error) {
       alert('Errore: ' + error.message);
     }
+  }
+
+  function filtraSquadre(testo, tipo) {
+    if (!testo || testo.length < 2) {
+      setSuggerimentiSquadre(prev => ({ ...prev, [tipo]: [] }));
+      setMostraSuggerimentiSquadre(prev => ({ ...prev, [tipo]: false }));
+      return;
+    }
+    
+    const filtrate = Object.keys(STEMMI_SQUADRE).filter(nome => 
+      nome.toLowerCase().includes(testo.toLowerCase())
+    );
+    
+    setSuggerimentiSquadre(prev => ({ ...prev, [tipo]: filtrate }));
+    setMostraSuggerimentiSquadre(prev => ({ ...prev, [tipo]: filtrate.length > 0 }));
+  }
+
+  function selezionaSquadra(squadra, tipo) {
+    const partite = nuovoPronostico.partita.split(' vs ');
+    if (tipo === 'casa') {
+      setNuovoPronostico({...nuovoPronostico, partita: `${squadra} vs ${partite[1] || ''}`});
+    } else {
+      setNuovoPronostico({...nuovoPronostico, partita: `${partite[0] || ''} vs ${squadra}`});
+    }
+    setMostraSuggerimentiSquadre({ casa: false, trasferta: false });
   }
 
   async function aggiungiPronosticoDaPartita(e) {
@@ -994,7 +1021,66 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   <form onSubmit={aggiungiPronostico} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Partita</label>
-                      <input type="text" value={nuovoPronostico.partita} onChange={(e) => setNuovoPronostico({...nuovoPronostico, partita: e.target.value})} placeholder="es. Inter vs Milan" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                      <input
+                        type="text"
+                        value={nuovoPronostico.partita}
+                        onChange={(e) => {
+                          setNuovoPronostico({...nuovoPronostico, partita: e.target.value});
+                          const parti = e.target.value.split(' vs ');
+                          if (parti.length === 1) {
+                            filtraSquadre(parti[0], 'casa');
+                          } else if (parti.length === 2) {
+                            filtraSquadre(parti[1], 'trasferta');
+                          }
+                        }}
+                        placeholder="es. Inter vs Milan"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                      {mostraSuggerimentiSquadre.casa && suggerimentiSquadre.casa.length > 0 && (
+                        <div className="mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {suggerimentiSquadre.casa.map((squadra) => (
+                            <button
+                              key={squadra}
+                              type="button"
+                              onClick={() => selezionaSquadra(squadra, 'casa')}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2"
+                            >
+                              {getStemmaSquadra(squadra) && (
+                                <img 
+                                  src={getStemmaSquadra(squadra)} 
+                                  alt={squadra}
+                                  className="w-6 h-6 object-contain"
+                                />
+                              )}
+                              <span className="text-sm">{squadra}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {mostraSuggerimentiSquadre.trasferta && suggerimentiSquadre.trasferta.length > 0 && (
+                        <div className="mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {suggerimentiSquadre.trasferta.map((squadra) => (
+                            <button
+                              key={squadra}
+                              type="button"
+                              onClick={() => selezionaSquadra(squadra, 'trasferta')}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2"
+                            >
+                              {getStemmaSquadra(squadra) && (
+                                <img 
+                                  src={getStemmaSquadra(squadra)} 
+                                  alt={squadra}
+                                  className="w-6 h-6 object-contain"
+                                />
+                              )}
+                              <span className="text-sm">{squadra}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Inizia a scrivere per vedere i suggerimenti con gli stemmi
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Pronostico</label>
@@ -1047,143 +1133,105 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   </div>
                 ) : (
                   <div className="space-y-4">
-  {pronostici.map((p) => {
-    const squadre = p.partita.split(' vs ');
-    const squadraCasa = squadre[0]?.trim();
-    const squadraTrasferta = squadre[1]?.trim();
-    const stemmaCasa = getStemmaSquadra(squadraCasa);
-    const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
+                    {pronostici.map((p) => (
+                      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {(() => {
+                                const squadre = p.partita.split(' vs ');
+                                const squadraCasa = squadre[0]?.trim();
+                                const squadraTrasferta = squadre[1]?.trim();
+                                return (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {getStemmaSquadra(squadraCasa) && (
+                                      <img 
+                                        src={getStemmaSquadra(squadraCasa)} 
+                                        alt={squadraCasa}
+                                        className="w-6 h-6 object-contain"
+                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                      />
+                                    )}
+                                    <h3 className="font-semibold text-gray-800 text-lg">{p.partita}</h3>
+                                    {getStemmaSquadra(squadraTrasferta) && (
+                                      <img 
+                                        src={getStemmaSquadra(squadraTrasferta)} 
+                                        alt={squadraTrasferta}
+                                        className="w-6 h-6 object-contain"
+                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                      />
+                                    )}
+                                    {vistaCorrente === 'tutti' && (
+                                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">{formattaData(p.data_partita)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <p className="text-gray-600 mt-1"><span className="font-medium">Pronostico:</span> {p.pronostico}</p>
+                            <p className="text-gray-600"><span className="font-medium">Quota:</span> {p.quota}</p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳ In attesa'}
+                          </span>
+                        </div>
+                        
+                        {isAdmin && (
+                          <div className="flex gap-2 mt-3 mb-3">
+                            {p.stato === 'pending' && (
+                              <>
+                                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Vinto</button>
+                                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Perso</button>
+                              </>
+                            )}
+                            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm ml-auto">Elimina</button>
+                          </div>
+                        )}
 
-    return (
-      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              {stemmaCasa && (
-                <img 
-                  src={stemmaCasa}
-                  alt={squadraCasa}
-                  className="w-6 h-6 object-contain"
-                />
-              )}
-
-              <h3 className="font-semibold text-gray-800 text-lg">
-                {p.partita}
-              </h3>
-
-              {stemmaTrasferta && (
-                <img
-                  src={stemmaTrasferta}
-                  alt={squadraTrasferta}
-                  className="w-6 h-6 object-contain"
-                />
-              )}
-
-              {vistaCorrente === 'tutti' && (
-                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                  {formattaData(p.data_partita)}
-                </span>
-              )}
-            </div>
-
-            <p className="text-gray-600 mt-1">
-              <span className="font-medium">Pronostico:</span> {p.pronostico}
-            </p>
-
-            <p className="text-gray-600">
-              <span className="font-medium">Quota:</span> {p.quota}
-            </p>
-          </div>
-
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              p.stato === 'win'
-                ? 'bg-green-100 text-green-800'
-                : p.stato === 'loss'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}
-          >
-            {p.stato === 'win'
-              ? '✓ Vinto'
-              : p.stato === 'loss'
-              ? '✗ Perso'
-              : '⏳ In attesa'}
-          </span>
-        </div>
-
-        {/* ⭐ QUESTO BLOCCO ERA FUORI POSTO — ORA È CORRETTO */}
-        {isAdmin && (
-          <div className="flex gap-2 mt-3 mb-3">
-            {p.stato === 'pending' && (
-              <>
-                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded text-sm">
-                  Vinto
-                </button>
-                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded text-sm">
-                  Perso
-                </button>
-              </>
-            )}
-            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded text-sm ml-auto">
-              Elimina
-            </button>
-          </div>
-        )}
-
-        {/* Commenti */}
-        <div className="border-t pt-3 mt-3">
-          <button 
-            onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} 
-            className="text-sm text-blue-600 hover:underline mb-2"
-          >
-            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
-          </button>
-
-          {mostraCommenti[p.id] && (
-            <div className="mt-3 space-y-3">
-              {commenti[p.id]?.map((c) => (
-                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(c.created_at).toLocaleString('it-IT')}
-                    </span>
+                        <div className="border-t pt-3 mt-3">
+                          <button onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} className="text-sm text-blue-600 hover:underline mb-2">
+                            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
+                          </button>
+                          
+                          {mostraCommenti[p.id] && (
+                            <div className="mt-3 space-y-3">
+                              {commenti[p.id]?.map((c) => (
+                                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
+                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString('it-IT')}</span>
+                                  </div>
+                                  <p className="text-gray-700 text-sm">{c.testo}</p>
+                                </div>
+                              ))}
+                              
+                              <div className="mt-3">
+                                <input
+                                  type="text"
+                                  value={nomeUtente}
+                                  onChange={(e) => setNomeUtente(e.target.value)}
+                                  placeholder="Il tuo nome"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={nuovoCommento[p.id] || ''}
+                                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                    placeholder="Scrivi un commento..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Invia</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-gray-700 text-sm">{c.testo}</p>
-                </div>
-              ))}
-
-              <div className="mt-3">
-                <input
-                  type="text"
-                  value={nomeUtente}
-                  onChange={(e) => setNomeUtente(e.target.value)}
-                  placeholder="Il tuo nome"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={nuovoCommento[p.id] || ''}
-                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
-                    placeholder="Scrivi un commento..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
-                    Invia
-                  </button>
-                </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-      </div>
-    );
-  })}
-</div>) : (
-
             ) : (
               /* SEZIONE PARTITE */
               <div className="bg-white rounded-lg shadow-lg p-6">
