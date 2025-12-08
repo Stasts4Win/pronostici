@@ -20,11 +20,11 @@ const { useState, useEffect } = React;
 const SUPABASE_URL = 'https://jhquweahxrixlxdolpwc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocXV3ZWFoeHJpeGx4ZG9scHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDYxMTksImV4cCI6MjA4MDAyMjExOX0.UGA3_cqQvzXC79gKsceFnmqrCnOy1cjJQ7uEKLE0K3c';
 const ADMIN_USER_ID = '1b2932fe-9d8e-4518-a8cf-79ae5cf98bcd';
-
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Database stemmi squadre Serie A
+// Database stemmi squadre
 const STEMMI_SQUADRE = {
+  // === SERIE A ===
   'AC Milan': 'https://media.api-sports.io/football/teams/489.png',
   'Milan': 'https://media.api-sports.io/football/teams/489.png',
   'AS Roma': 'https://media.api-sports.io/football/teams/497.png',
@@ -32,22 +32,46 @@ const STEMMI_SQUADRE = {
   'Atalanta': 'https://media.api-sports.io/football/teams/499.png',
   'Bologna': 'https://media.api-sports.io/football/teams/500.png',
   'Cagliari': 'https://media.api-sports.io/football/teams/490.png',
-  'Como': 'https://static.flashscore.com/res/image/data/Cf5pQNyS-hpmw8K1h.png',
-  'Cremonese': 'https://static.flashscore.com/res/image/data/EDUhUrDr-t4GQxEM5.png',
+  'Como': 'https://media.api-sports.io/football/teams/515.png',
+  'Cremonese': 'https://media.api-sports.io/football/teams/519.png',
   'Fiorentina': 'https://media.api-sports.io/football/teams/502.png',
   'Genoa': 'https://media.api-sports.io/football/teams/495.png',
   'Inter': 'https://media.api-sports.io/football/teams/505.png',
-  'Juventus': 'https://static.flashscore.com/res/image/data/CbDOFGyS-EXzXDYgS.png',
+  'Juventus': 'https://media.api-sports.io/football/teams/496.png',
   'Lazio': 'https://media.api-sports.io/football/teams/487.png',
   'Lecce': 'https://media.api-sports.io/football/teams/867.png',
   'Napoli': 'https://media.api-sports.io/football/teams/492.png',
-  'Parma': 'https://static.flashscore.com/res/image/data/YcrE7ae5-fydXzLY6.png',
-  'Pisa': 'https://static.flashscore.com/res/image/data/CzC5XtGG-GMOw3SI3.png',
+  'Parma': 'https://media.api-sports.io/football/teams/503.png',
+  'Pisa': 'https://media.api-sports.io/football/teams/514.png',
   'Sassuolo': 'https://media.api-sports.io/football/teams/488.png',
   'Torino': 'https://media.api-sports.io/football/teams/503.png',
   'Udinese': 'https://media.api-sports.io/football/teams/494.png',
   'Verona': 'https://media.api-sports.io/football/teams/504.png',
-  'Hellas Verona': 'https://media.api-sports.io/football/teams/504.png'
+  'Hellas Verona': 'https://media.api-sports.io/football/teams/504.png',
+  
+  // === SERIE B ===
+  'Avellino': 'https://media.api-sports.io/football/teams/2893.png',
+  'Bari': 'https://media.api-sports.io/football/teams/510.png',
+  'Carrarese': 'https://media.api-sports.io/football/teams/5990.png',
+  'Catanzaro': 'https://media.api-sports.io/football/teams/2991.png',
+  'Cesena': 'https://media.api-sports.io/football/teams/511.png',
+  'Empoli': 'https://media.api-sports.io/football/teams/1579.png',
+  'Entella': 'https://media.api-sports.io/football/teams/512.png',
+  'Virtus Entella': 'https://media.api-sports.io/football/teams/512.png',
+  'Frosinone': 'https://media.api-sports.io/football/teams/869.png',
+  'Juve Stabia': 'https://media.api-sports.io/football/teams/2889.png',
+  'Mantova': 'https://media.api-sports.io/football/teams/2996.png',
+  'Modena': 'https://media.api-sports.io/football/teams/2982.png',
+  'Monza': 'https://media.api-sports.io/football/teams/1579.png',
+  'Padova': 'https://media.api-sports.io/football/teams/2983.png',
+  'Palermo': 'https://media.api-sports.io/football/teams/516.png',
+  'Pescara': 'https://media.api-sports.io/football/teams/517.png',
+  'Reggiana': 'https://media.api-sports.io/football/teams/2985.png',
+  'Sampdoria': 'https://media.api-sports.io/football/teams/498.png',
+  'Spezia': 'https://media.api-sports.io/football/teams/515.png',
+  'Sudtirol': 'https://media.api-sports.io/football/teams/5990.png',
+  'Südtirol': 'https://media.api-sports.io/football/teams/5990.png',
+  'Venezia': 'https://media.api-sports.io/football/teams/517.png'
 };
 
 // Funzione per ottenere lo stemma di una squadra
