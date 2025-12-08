@@ -32,17 +32,17 @@ const STEMMI_SQUADRE = {
   'Atalanta': 'https://media.api-sports.io/football/teams/499.png',
   'Bologna': 'https://media.api-sports.io/football/teams/500.png',
   'Cagliari': 'https://media.api-sports.io/football/teams/490.png',
-  'Como': 'https://media.api-sports.io/football/teams/515.png',
-  'Cremonese': 'https://media.api-sports.io/football/teams/519.png',
+  'Como': 'https://static.flashscore.com/res/image/data/Cf5pQNyS-hpmw8K1h.png',
+  'Cremonese': 'https://static.flashscore.com/res/image/data/EDUhUrDr-t4GQxEM5.png',
   'Fiorentina': 'https://media.api-sports.io/football/teams/502.png',
   'Genoa': 'https://media.api-sports.io/football/teams/495.png',
   'Inter': 'https://media.api-sports.io/football/teams/505.png',
-  'Juventus': 'https://media.api-sports.io/football/teams/496.png',
+  'Juventus': 'https://static.flashscore.com/res/image/data/CbDOFGyS-EXzXDYgS.png'',
   'Lazio': 'https://media.api-sports.io/football/teams/487.png',
   'Lecce': 'https://media.api-sports.io/football/teams/867.png',
   'Napoli': 'https://media.api-sports.io/football/teams/492.png',
-  'Parma': 'https://media.api-sports.io/football/teams/503.png',
-  'Pisa': 'https://media.api-sports.io/football/teams/514.png',
+  'Parma': 'https://static.flashscore.com/res/image/data/YcrE7ae5-fydXzLY6.png',
+  'Pisa': ''https://static.flashscore.com/res/image/data/CzC5XtGG-GMOw3SI3.png'',
   'Sassuolo': 'https://media.api-sports.io/football/teams/488.png',
   'Torino': 'https://media.api-sports.io/football/teams/503.png',
   'Udinese': 'https://media.api-sports.io/football/teams/494.png',
@@ -1047,12 +1047,37 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {pronostici.map((p) => (
-                      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+                    {pronostici.map((p) => {
+                      // Estrai i nomi delle squadre dalla partita (formato "Squadra1 vs Squadra2")
+                      const squadre = p.partita.split(' vs ');
+                      const squadraCasa = squadre[0]?.trim();
+                      const squadraTrasferta = squadre[1]?.trim();
+                      const stemmaCasa = getStemmaSquadra(squadraCasa);
+                      const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
+                      
+                      return (
+                        <div key={p.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-3 mb-1">
+                              {/* Mostra gli stemmi se disponibili */}
+                              {stemmaCasa && (
+                                <img 
+                                  src={stemmaCasa} 
+                                  alt={squadraCasa}
+                                  className="w-6 h-6 object-contain"
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              )}
                               <h3 className="font-semibold text-gray-800 text-lg">{p.partita}</h3>
+                              {stemmaTrasferta && (
+                                <img 
+                                  src={stemmaTrasferta} 
+                                  alt={squadraTrasferta}
+                                  className="w-6 h-6 object-contain"
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              )}
                               {vistaCorrente === 'tutti' && (
                                 <span className="text-xs bg-gray-100 px-2 py-1 rounded">{formattaData(p.data_partita)}</span>
                               )}
