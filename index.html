@@ -1047,7 +1047,7 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   </div>
                 ) : (
                   <div className="space-y-4">
-{pronostici.map((p) => {
+                    {pronostici.map((p) => {
                       // Estrai i nomi delle squadre dalla partita (formato "Squadra1 vs Squadra2")
                       const squadre = p.partita.split(' vs ');
                       const squadraCasa = squadre[0]?.trim();
@@ -1056,7 +1056,7 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                       const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
                       
                       return (
-                      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+                        <div key={p.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-1">
