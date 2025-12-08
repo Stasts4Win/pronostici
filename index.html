@@ -20,7 +20,6 @@ const { useState, useEffect } = React;
 const SUPABASE_URL = 'https://jhquweahxrixlxdolpwc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocXV3ZWFoeHJpeGx4ZG9scHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDYxMTksImV4cCI6MjA4MDAyMjExOX0.UGA3_cqQvzXC79gKsceFnmqrCnOy1cjJQ7uEKLE0K3c';
 const ADMIN_USER_ID = '1b2932fe-9d8e-4518-a8cf-79ae5cf98bcd';
-
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Database stemmi squadre
@@ -1196,6 +1195,10 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                             <p className="text-gray-600 mt-1"><span className="font-medium">Pronostico:</span> {p.pronostico}</p>
                             <p className="text-gray-600"><span className="font-medium">Quota:</span> {p.quota}</p>
                           </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳ In attesa'}
+                          </span>
+                        </div>
                         
                         {isAdmin && (
                           <div className="flex gap-2 mt-3 mb-3">
