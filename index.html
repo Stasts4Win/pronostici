@@ -1047,133 +1047,143 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {pronostici.map((p) => {
-  const squadre = p.partita.split(' vs ');
-  const squadraCasa = squadre[0]?.trim();
-  const squadraTrasferta = squadre[1]?.trim();
-  const stemmaCasa = getStemmaSquadra(squadraCasa);
-  const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
+  {pronostici.map((p) => {
+    const squadre = p.partita.split(' vs ');
+    const squadraCasa = squadre[0]?.trim();
+    const squadraTrasferta = squadre[1]?.trim();
+    const stemmaCasa = getStemmaSquadra(squadraCasa);
+    const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
 
-  return (
-    <div key={p.id} className="border border-gray-200 rounded-lg p-4">
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            {stemmaCasa && (
-              <img 
-                src={stemmaCasa}
-                alt={squadraCasa}
-                className="w-6 h-6 object-contain"
-                onError={(e) => (e.target.style.display = 'none')}
-              />
-            )}
+    return (
+      <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-1">
+              {stemmaCasa && (
+                <img 
+                  src={stemmaCasa}
+                  alt={squadraCasa}
+                  className="w-6 h-6 object-contain"
+                />
+              )}
 
-            <h3 className="font-semibold text-gray-800 text-lg">
-              {p.partita}
-            </h3>
+              <h3 className="font-semibold text-gray-800 text-lg">
+                {p.partita}
+              </h3>
 
-            {stemmaTrasferta && (
-              <img
-                src={stemmaTrasferta}
-                alt={squadraTrasferta}
-                className="w-6 h-6 object-contain"
-                onError={(e) => (e.target.style.display = 'none')}
-              />
-            )}
+              {stemmaTrasferta && (
+                <img
+                  src={stemmaTrasferta}
+                  alt={squadraTrasferta}
+                  className="w-6 h-6 object-contain"
+                />
+              )}
 
-            {vistaCorrente === 'tutti' && (
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                {formattaData(p.data_partita)}
-              </span>
-            )}
+              {vistaCorrente === 'tutti' && (
+                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                  {formattaData(p.data_partita)}
+                </span>
+              )}
+            </div>
+
+            <p className="text-gray-600 mt-1">
+              <span className="font-medium">Pronostico:</span> {p.pronostico}
+            </p>
+
+            <p className="text-gray-600">
+              <span className="font-medium">Quota:</span> {p.quota}
+            </p>
           </div>
 
-          <p className="text-gray-600 mt-1">
-            <span className="font-medium">Pronostico:</span> {p.pronostico}
-          </p>
-
-          <p className="text-gray-600">
-            <span className="font-medium">Quota:</span> {p.quota}
-          </p>
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              p.stato === 'win'
+                ? 'bg-green-100 text-green-800'
+                : p.stato === 'loss'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}
+          >
+            {p.stato === 'win'
+              ? '✓ Vinto'
+              : p.stato === 'loss'
+              ? '✗ Perso'
+              : '⏳ In attesa'}
+          </span>
         </div>
 
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
-            p.stato === 'win'
-              ? 'bg-green-100 text-green-800'
-              : p.stato === 'loss'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}
-        >
-          {p.stato === 'win'
-            ? '✓ Vinto'
-            : p.stato === 'loss'
-            ? '✗ Perso'
-            : '⏳ In attesa'}
-        </span>
-      </div>
-    </div>
-  );
-})}
+        {/* ⭐ QUESTO BLOCCO ERA FUORI POSTO — ORA È CORRETTO */}
+        {isAdmin && (
+          <div className="flex gap-2 mt-3 mb-3">
+            {p.stato === 'pending' && (
+              <>
+                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded text-sm">
+                  Vinto
+                </button>
+                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded text-sm">
+                  Perso
+                </button>
+              </>
+            )}
+            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded text-sm ml-auto">
+              Elimina
+            </button>
+          </div>
+        )}
 
-                        
-                        {isAdmin && (
-                          <div className="flex gap-2 mt-3 mb-3">
-                            {p.stato === 'pending' && (
-                              <>
-                                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Vinto</button>
-                                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Perso</button>
-                              </>
-                            )}
-                            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm ml-auto">Elimina</button>
-                          </div>
-                        )}
+        {/* Commenti */}
+        <div className="border-t pt-3 mt-3">
+          <button 
+            onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} 
+            className="text-sm text-blue-600 hover:underline mb-2"
+          >
+            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
+          </button>
 
-                        <div className="border-t pt-3 mt-3">
-                          <button onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} className="text-sm text-blue-600 hover:underline mb-2">
-                            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
-                          </button>
-                          
-                          {mostraCommenti[p.id] && (
-                            <div className="mt-3 space-y-3">
-                              {commenti[p.id]?.map((c) => (
-                                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
-                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString('it-IT')}</span>
-                                  </div>
-                                  <p className="text-gray-700 text-sm">{c.testo}</p>
-                                </div>
-                              ))}
-                              
-                              <div className="mt-3">
-                                <input
-                                  type="text"
-                                  value={nomeUtente}
-                                  onChange={(e) => setNomeUtente(e.target.value)}
-                                  placeholder="Il tuo nome"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
-                                />
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    value={nuovoCommento[p.id] || ''}
-                                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
-                                    placeholder="Scrivi un commento..."
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                  />
-                                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Invia</button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+          {mostraCommenti[p.id] && (
+            <div className="mt-3 space-y-3">
+              {commenti[p.id]?.map((c) => (
+                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(c.created_at).toLocaleString('it-IT')}
+                    </span>
                   </div>
-                )}
+                  <p className="text-gray-700 text-sm">{c.testo}</p>
+                </div>
+              ))}
+
+              <div className="mt-3">
+                <input
+                  type="text"
+                  value={nomeUtente}
+                  onChange={(e) => setNomeUtente(e.target.value)}
+                  placeholder="Il tuo nome"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={nuovoCommento[p.id] || ''}
+                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
+                    placeholder="Scrivi un commento..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+                    Invia
+                  </button>
+                </div>
               </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+    );
+  })}
+</div>
+
             ) : (
               /* SEZIONE PARTITE */
               <div className="bg-white rounded-lg shadow-lg p-6">
