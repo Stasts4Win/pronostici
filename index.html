@@ -1048,47 +1048,75 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                 ) : (
                   <div className="space-y-4">
                     {pronostici.map((p) => {
-                      // Estrai i nomi delle squadre dalla partita (formato "Squadra1 vs Squadra2")
-                      const squadre = p.partita.split(' vs ');
-                      const squadraCasa = squadre[0]?.trim();
-                      const squadraTrasferta = squadre[1]?.trim();
-                      const stemmaCasa = getStemmaSquadra(squadraCasa);
-                      const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
-                      
-                      return (
-                        <div key={p.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-1">
-                              {/* Mostra gli stemmi se disponibili */}
-                              {stemmaCasa && (
-                                <img 
-                                  src={stemmaCasa} 
-                                  alt={squadraCasa}
-                                  className="w-6 h-6 object-contain"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                              )}
-                              <h3 className="font-semibold text-gray-800 text-lg">{p.partita}</h3>
-                              {stemmaTrasferta && (
-                                <img 
-                                  src={stemmaTrasferta} 
-                                  alt={squadraTrasferta}
-                                  className="w-6 h-6 object-contain"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                              )}
-                              {vistaCorrente === 'tutti' && (
-                                <span className="text-xs bg-gray-100 px-2 py-1 rounded">{formattaData(p.data_partita)}</span>
-                              )}
-                            </div>
-                            <p className="text-gray-600 mt-1"><span className="font-medium">Pronostico:</span> {p.pronostico}</p>
-                            <p className="text-gray-600"><span className="font-medium">Quota:</span> {p.quota}</p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳ In attesa'}
-                          </span>
-                        </div>
+  const squadre = p.partita.split(' vs ');
+  const squadraCasa = squadre[0]?.trim();
+  const squadraTrasferta = squadre[1]?.trim();
+  const stemmaCasa = getStemmaSquadra(squadraCasa);
+  const stemmaTrasferta = getStemmaSquadra(squadraTrasferta);
+
+  return (
+    <div key={p.id} className="border border-gray-200 rounded-lg p-4">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1">
+            {stemmaCasa && (
+              <img 
+                src={stemmaCasa}
+                alt={squadraCasa}
+                className="w-6 h-6 object-contain"
+                onError={(e) => (e.target.style.display = 'none')}
+              />
+            )}
+
+            <h3 className="font-semibold text-gray-800 text-lg">
+              {p.partita}
+            </h3>
+
+            {stemmaTrasferta && (
+              <img
+                src={stemmaTrasferta}
+                alt={squadraTrasferta}
+                className="w-6 h-6 object-contain"
+                onError={(e) => (e.target.style.display = 'none')}
+              />
+            )}
+
+            {vistaCorrente === 'tutti' && (
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {formattaData(p.data_partita)}
+              </span>
+            )}
+          </div>
+
+          <p className="text-gray-600 mt-1">
+            <span className="font-medium">Pronostico:</span> {p.pronostico}
+          </p>
+
+          <p className="text-gray-600">
+            <span className="font-medium">Quota:</span> {p.quota}
+          </p>
+        </div>
+
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-medium ${
+            p.stato === 'win'
+              ? 'bg-green-100 text-green-800'
+              : p.stato === 'loss'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-yellow-100 text-yellow-800'
+          }`}
+        >
+          {p.stato === 'win'
+            ? '✓ Vinto'
+            : p.stato === 'loss'
+            ? '✗ Perso'
+            : '⏳ In attesa'}
+        </span>
+      </div>
+    </div>
+  );
+})}
+
                         
                         {isAdmin && (
                           <div className="flex gap-2 mt-3 mb-3">
