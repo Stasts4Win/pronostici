@@ -1175,7 +1175,7 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                             const squadraCasa = squadre[0]?.trim();
                             const squadraTrasferta = squadre[1]?.trim();
                             return (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 {getStemmaSquadra(squadraCasa) && (
                                   <img 
                                     src={getStemmaSquadra(squadraCasa)} 
@@ -1184,7 +1184,7 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                                     onError={(e) => { e.target.style.display = 'none'; }}
                                   />
                                 )}
-                                <h3 className="font-semibold text-gray-800 text-base flex-1 min-w-0">{p.partita}</h3>
+                                <h3 className="font-semibold text-gray-800 text-base">{p.partita}</h3>
                                 {getStemmaSquadra(squadraTrasferta) && (
                                   <img 
                                     src={getStemmaSquadra(squadraTrasferta)} 
