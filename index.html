@@ -487,14 +487,30 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25
       return;
     }
     
-    // Trova la partita corrispondente tra quelle disponibili
+    // Separa le squadre dal testo inserito
+    const parti = partita.split(' vs ');
+    if (parti.length !== 2) {
+      alert('Formato non valido. Usa: "Squadra Casa vs Squadra Trasferta"');
+      return;
+    }
+    
+    const squadraCasaCercata = parti[0].trim().toLowerCase();
+    const squadraTrasfertaCercata = parti[1].trim().toLowerCase();
+    
+    // Trova la partita con ricerca flessibile (match parziale)
     const partitaTrovata = partiteDisponibili.find((p) => {
-      const nome = `${p.squadra_casa} vs ${p.squadra_trasferta}`;
-      return nome.toLowerCase() === partita.trim().toLowerCase();
+      const casaDB = p.squadra_casa.toLowerCase();
+      const trasfertaDB = p.squadra_trasferta.toLowerCase();
+      
+      // Match esatto o parziale per entrambe le squadre
+      const matchCasa = casaDB.includes(squadraCasaCercata) || squadraCasaCercata.includes(casaDB);
+      const matchTrasferta = trasfertaDB.includes(squadraTrasfertaCercata) || squadraTrasfertaCercata.includes(trasfertaDB);
+      
+      return matchCasa && matchTrasferta;
     });
     
     if (!partitaTrovata) {
-      alert('Partita non trovata tra quelle caricate.\nAssicurati che il nome sia esattamente "Casa vs Trasferta".');
+      alert('Partita non trovata tra quelle caricate.\n\nAssicurati che:\n- La partita sia già stata importata\n- Il formato sia "Casa vs Trasferta"\n- I nomi delle squadre siano simili a quelli nel database');
       return;
     }
     
