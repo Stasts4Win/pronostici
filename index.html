@@ -26,7 +26,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Database stemmi squadre
 const STEMMI_SQUADRE = {
   // === SERIE A ===
-  'AC Milan': 'https://media.api-sports.io/football/teams/489.png',
+  AC Milan': 'https://media.api-sports.io/football/teams/489.png',
   'Milan': 'https://media.api-sports.io/football/teams/489.png',
   'AS Roma': 'https://media.api-sports.io/football/teams/497.png',
   'Roma': 'https://media.api-sports.io/football/teams/497.png',
@@ -276,10 +276,10 @@ function App() {
   }
 
   function scaricaTemplate() {
-    const template = `SQUADRA_CASA\tSQUADRA_TRASFERTA\tCAMPIONATO\tDATA\tQUOTA_1\tQUOTA_X\tQUOTA_2\tQUOTA_NOGOL\tQUOTA_GOL\tQUOTA_UNDER_15\tQUOTA_OVER_15\tQUOTA_UNDER_25\tQUOTA_OVER_25\tQUOTA_UNDER_35\tQUOTA_OVER_35\tQUOTA_1X\tQUOTA_12\tQUOTA_X2
-Inter\tMilan\tserie-a\t15/12/2024\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,50\t1,50\t2,60\t2,20\t1,65\t1,30\t1,25\t1,60
-Juventus\tNapoli\tserie-a\t15/12/2024\t1,85\t3,60\t4,20\t3,00\t1,35\t1,15\t5,00\t1,45\t2,75\t2,30\t1,60\t1,20\t1,18\t1,75
-Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\t1,60\t2,40\t2,10\t1,70\t1,35\t1,28\t1,85`;
+    const template = `SQUADRA_CASA\tSQUADRA_TRASFERTA\tCAMPIONATO\tDATA\tORARIO\tQUOTA_1\tQUOTA_X\tQUOTA_2\tQUOTA_NOGOL\tQUOTA_GOL\tQUOTA_UNDER_15\tQUOTA_OVER_15\tQUOTA_UNDER_25\tQUOTA_OVER_25\tQUOTA_UNDER_35\tQUOTA_OVER_35\tQUOTA_1X\tQUOTA_12\tQUOTA_X2
+Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,50\t1,50\t2,60\t2,20\t1,65\t1,30\t1,25\t1,60
+Juventus\tNapoli\tserie-a\t15/12/2024\t18:00\t1,85\t3,60\t4,20\t3,00\t1,35\t1,15\t5,00\t1,45\t2,75\t2,30\t1,60\t1,20\t1,18\t1,75
+Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\t1,60\t2,40\t2,10\t1,70\t1,35\t1,28\t1,85`;
     
     const blob = new Blob([template], { type: 'text/tab-separated-values' });
     const url = URL.createObjectURL(blob);
@@ -311,6 +311,9 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
           dataSQL = `${anno}-${mese.padStart(2, '0')}-${giorno.padStart(2, '0')}`;
         }
 
+        // Orario (formato HH:MM)
+        const orario = values[4]?.trim() || null;
+
         // Funzione per convertire quota con virgola in numero
         const parseQuota = (val) => {
           if (!val) return null;
@@ -324,20 +327,21 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
           squadra_trasferta: values[1]?.trim(),
           campionato: values[2]?.trim(),
           data_partita: dataSQL,
-          quota_1: parseQuota(values[4]),
-          quota_x: parseQuota(values[5]),
-          quota_2: parseQuota(values[6]),
-          quota_nogol: parseQuota(values[7]),
-          quota_gol: parseQuota(values[8]),
-          quota_under_15: parseQuota(values[9]),
-          quota_over_15: parseQuota(values[10]),
-          quota_under_25: parseQuota(values[11]),
-          quota_over_25: parseQuota(values[12]),
-          quota_under_35: parseQuota(values[13]),
-          quota_over_35: parseQuota(values[14]),
-          quota_1x: parseQuota(values[15]),
-          quota_12: parseQuota(values[16]),
-          quota_x2: parseQuota(values[17]),
+          orario: orario,
+          quota_1: parseQuota(values[5]),
+          quota_x: parseQuota(values[6]),
+          quota_2: parseQuota(values[7]),
+          quota_nogol: parseQuota(values[8]),
+          quota_gol: parseQuota(values[9]),
+          quota_under_15: parseQuota(values[10]),
+          quota_over_15: parseQuota(values[11]),
+          quota_under_25: parseQuota(values[12]),
+          quota_over_25: parseQuota(values[13]),
+          quota_under_35: parseQuota(values[14]),
+          quota_over_35: parseQuota(values[15]),
+          quota_1x: parseQuota(values[16]),
+          quota_12: parseQuota(values[17]),
+          quota_x2: parseQuota(values[18]),
           user_id: user.id,
           batch_importazione: batchTimestamp
         };
@@ -477,23 +481,38 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
 
   async function aggiungiPronostico(e) {
     e.preventDefault();
-    if (!nuovoPronostico.partita || !nuovoPronostico.pronostico || !nuovoPronostico.quota) {
+    const { partita, pronostico, quota } = nuovoPronostico;
+    if (!partita || !pronostico || !quota) {
       alert('Compila tutti i campi!');
       return;
     }
+    
+    // Trova la partita corrispondente tra quelle disponibili
+    const partitaTrovata = partiteDisponibili.find((p) => {
+      const nome = `${p.squadra_casa} vs ${p.squadra_trasferta}`;
+      return nome.toLowerCase() === partita.trim().toLowerCase();
+    });
+    
+    if (!partitaTrovata) {
+      alert('Partita non trovata tra quelle caricate.\nAssicurati che il nome sia esattamente "Casa vs Trasferta".');
+      return;
+    }
+    
     try {
       const { error } = await supabase.from('pronostici').insert([{
-        partita: nuovoPronostico.partita,
-        pronostico: nuovoPronostico.pronostico,
-        quota: parseFloat(nuovoPronostico.quota),
+        partita: `${partitaTrovata.squadra_casa} vs ${partitaTrovata.squadra_trasferta}`,
+        pronostico,
+        quota: parseFloat(quota),
         stato: 'pending',
-        campionato: campionatoSelezionato,
-        data_partita: dataSelezionata,
-        user_id: user.id
+        campionato: partitaTrovata.campionato,
+        data_partita: partitaTrovata.data_partita, // 🔹 usa la data della partita
+        user_id: user.id,
+        partita_id: partitaTrovata.id              // 🔹 collega alla partita
       }]);
       if (error) throw error;
       setNuovoPronostico({ partita: '', pronostico: '', quota: '' });
       caricaPronostici();
+      alert('✅ Pronostico aggiunto con successo!');
     } catch (error) {
       alert('Errore: ' + error.message);
     }
@@ -1303,7 +1322,15 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\
                               </div>
                             </div>
                             {vistaCorrente === 'tutti' && (
-                              <span className="text-sm text-gray-600">📅 {formattaData(partita.data_partita)}</span>
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                <span>📅 {formattaData(partita.data_partita)}</span>
+                                {partita.orario && <span>🕐 {partita.orario}</span>}
+                              </div>
+                            )}
+                            {vistaCorrente === 'giorno' && partita.orario && (
+                              <div className="text-sm text-gray-600 mt-1">
+                                🕐 {partita.orario}
+                              </div>
                             )}
                           </div>
                           {isAdmin && (
