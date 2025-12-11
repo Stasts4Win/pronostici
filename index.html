@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Pronostici - Sistema Completo</title>
+<title>Pronostici - Supabase</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,6 +25,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Database stemmi squadre
 const STEMMI_SQUADRE = {
+  // === SERIE A ===
   'AC Milan': 'https://media.api-sports.io/football/teams/489.png',
   'Milan': 'https://media.api-sports.io/football/teams/489.png',
   'AS Roma': 'https://media.api-sports.io/football/teams/497.png',
@@ -96,12 +97,18 @@ const STEMMI_SQUADRE = {
   'Wolves': 'https://static.flashscore.com/res/image/data/OMUzjDkC-CjV6Eptm.png'
   };
 
+// Funzione per ottenere lo stemma di una squadra
 function getStemmaSquadra(nomeSquadra) {
   if (!nomeSquadra) return null;
+  // Cerca match esatto o parziale
   const nome = nomeSquadra.trim();
   if (STEMMI_SQUADRE[nome]) return STEMMI_SQUADRE[nome];
+  
+  // Cerca match parziale (es. "Inter" in "Inter Milano")
   for (const [key, value] of Object.entries(STEMMI_SQUADRE)) {
-    if (nome.includes(key) || key.includes(nome)) return value;
+    if (nome.includes(key) || key.includes(nome)) {
+      return value;
+    }
   }
   return null;
 }
@@ -109,43 +116,48 @@ function getStemmaSquadra(nomeSquadra) {
 const CAMPIONATI = [
   { id: 'serie-a', nome: 'Serie A (Italia)', emoji: '🇮🇹', logo: 'https://media.api-sports.io/football/leagues/135.png' },
   { id: 'serie-b', nome: 'Serie B (Italia)', emoji: '🇮🇹', logo: 'https://media.api-sports.io/football/leagues/136.png' },
-  { id: 'premier-league', nome: 'Premier League', emoji: '🏴', logo: 'https://media.api-sports.io/football/leagues/39.png' },
-  { id: 'la-liga', nome: 'La Liga', emoji: '🇪🇸', logo: 'https://media.api-sports.io/football/leagues/140.png' },
-  { id: 'bundesliga', nome: 'Bundesliga', emoji: '🇩🇪', logo: 'https://media.api-sports.io/football/leagues/78.png' },
-  { id: 'ligue-1', nome: 'Ligue 1', emoji: '🇫🇷', logo: 'https://media.api-sports.io/football/leagues/61.png' }
+  { id: 'premier-league', nome: 'Premier League (Inghilterra)', emoji: '🏴', logo: 'https://media.api-sports.io/football/leagues/39.png' },
+  { id: 'championship', nome: 'Championship (Inghilterra)', emoji: '🏴', logo: 'https://media.api-sports.io/football/leagues/40.png' },
+  { id: 'la-liga', nome: 'La Liga (Spagna)', emoji: '🇪🇸', logo: 'https://media.api-sports.io/football/leagues/140.png' },
+  { id: 'la-liga-2', nome: 'La Liga 2 (Spagna)', emoji: '🇪🇸', logo: 'https://media.api-sports.io/football/leagues/141.png' },
+  { id: 'bundesliga', nome: 'Bundesliga (Germania)', emoji: '🇩🇪', logo: 'https://media.api-sports.io/football/leagues/78.png' },
+  { id: 'bundesliga-2', nome: 'Bundesliga 2 (Germania)', emoji: '🇩🇪', logo: 'https://media.api-sports.io/football/leagues/79.png' },
+  { id: 'ligue-1', nome: 'Ligue 1 (Francia)', emoji: '🇫🇷', logo: 'https://media.api-sports.io/football/leagues/61.png' },
+  { id: 'ligue-2', nome: 'Ligue 2 (Francia)', emoji: '🇫🇷', logo: 'https://media.api-sports.io/football/leagues/62.png' },
+  { id: 'jupiler-pro-league', nome: 'Jupiler Pro League (Belgio)', emoji: '🇧🇪', logo: 'https://media.api-sports.io/football/leagues/144.png' },
+  { id: 'eredivisie', nome: 'Eredivisie (Olanda)', emoji: '🇳🇱', logo: 'https://media.api-sports.io/football/leagues/88.png' },
+  { id: 'eerste-divisie', nome: 'Eerste Divisie (Olanda)', emoji: '🇳🇱', logo: 'https://media.api-sports.io/football/leagues/89.png' },
+  { id: 'liga-portugal', nome: 'Liga Portugal', emoji: '🇵🇹', logo: 'https://media.api-sports.io/football/leagues/94.png' },
+  { id: 'superliga', nome: 'Superliga (Danimarca)', emoji: '🇩🇰', logo: 'https://media.api-sports.io/football/leagues/119.png' },
+  { id: 'super-lig', nome: 'Süper Lig (Turchia)', emoji: '🇹🇷', logo: 'https://media.api-sports.io/football/leagues/203.png' },
+  { id: 'altro', nome: 'Altro', emoji: '⚽', logo: null }
 ];
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Stati esistenti
   const [campionatoSelezionato, setCampionatoSelezionato] = useState('serie-a');
   const [dataSelezionata, setDataSelezionata] = useState(new Date().toISOString().split('T')[0]);
   const [pronostici, setPronostici] = useState([]);
-  const [partiteDisponibili, setPartiteDisponibili] = useState([]);
   const [vistaCorrente, setVistaCorrente] = useState('giorno');
-  
-  // Nuovi stati per Multiple e Budget
-  const [sezioneAttiva, setSezioneAttiva] = useState('singole'); // 'singole', 'multiple', 'budget', 'crea-multipla'
-  const [budget, setBudget] = useState(null);
-  const [movimenti, setMovimenti] = useState([]);
-  const [multiple, setMultiple] = useState([]);
-  const [nuovaMultipla, setNuovaMultipla] = useState({
-    nome: '',
-    importo: '',
-    pronostici: []
-  });
+  const [nuovoPronostico, setNuovoPronostico] = useState({ partita: '', pronostico: '', quota: '' });
+  const [commenti, setCommenti] = useState({});
+  const [nuovoCommento, setNuovoCommento] = useState({});
+  const [nomeUtente, setNomeUtente] = useState('');
+  const [mostraCommenti, setMostraCommenti] = useState({});
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [mostraRegistrazione, setMostraRegistrazione] = useState(false);
-  
-  // Gestione partite per multipla (tutti i campionati, tutte le date)
-  const [tutteLePartite, setTutteLePartite] = useState([]);
-  const [filtriMultipla, setFiltriMultipla] = useState({
-    campionato: 'tutti',
-    dataInizio: '',
-    dataFine: ''
-  });
+  const [partiteDisponibili, setPartiteDisponibili] = useState([]);
+  const [partitaSelezionata, setPartitaSelezionata] = useState(null);
+  const [pronosticoSelezionato, setPronosticoSelezionato] = useState('');
+  const [suggerimentiPartite, setSuggerimentiPartite] = useState({});
+  const [nuovoSuggerimento, setNuovoSuggerimento] = useState({});
+  const [mostraSuggerimenti, setMostraSuggerimenti] = useState({});
+  const [mostraPartite, setMostraPartite] = useState(true);
+  const [ultimoBatch, setUltimoBatch] = useState(null);
+  const [partiteUltimoBatch, setPartiteUltimoBatch] = useState([]);
+  const [suggerimentiSquadre, setSuggerimentiSquadre] = useState({ casa: [], trasferta: [] });
+  const [mostraSuggerimentiSquadre, setMostraSuggerimentiSquadre] = useState({ casa: false, trasferta: false });
 
   useEffect(() => {
     checkUser();
@@ -156,13 +168,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user !== undefined) {
       caricaPronostici();
       caricaPartite();
-      caricaBudget();
-      caricaMovimenti();
-      caricaMultiple();
-      caricaTutteLePartite();
     }
   }, [campionatoSelezionato, dataSelezionata, vistaCorrente, user]);
 
@@ -203,82 +211,6 @@ function App() {
     await supabase.auth.signOut();
   }
 
-  // ========== BUDGET ==========
-  async function caricaBudget() {
-    try {
-      const { data, error } = await supabase
-        .from('budget')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (!data) {
-        // Crea budget iniziale
-        const { data: newBudget, error: insertError } = await supabase
-          .from('budget')
-          .insert([{ user_id: user.id, saldo_iniziale: 0, saldo_attuale: 0 }])
-          .select()
-          .single();
-        if (insertError) throw insertError;
-        setBudget(newBudget);
-      } else {
-        setBudget(data);
-      }
-    } catch (error) {
-      console.error('Errore caricamento budget:', error.message);
-    }
-  }
-
-  async function aggiungiMovimento(tipo, importo, descrizione) {
-    try {
-      const { error } = await supabase.from('movimenti').insert([{
-        user_id: user.id,
-        tipo,
-        importo,
-        descrizione
-      }]);
-      if (error) throw error;
-
-      // Aggiorna saldo
-      let nuovoSaldo = budget.saldo_attuale;
-      if (tipo === 'deposito' || tipo === 'vincita' || tipo === 'rimborso') {
-        nuovoSaldo += parseFloat(importo);
-      } else if (tipo === 'prelievo' || tipo === 'puntata') {
-        nuovoSaldo -= parseFloat(importo);
-      }
-
-      const { error: updateError } = await supabase
-        .from('budget')
-        .update({ saldo_attuale: nuovoSaldo })
-        .eq('user_id', user.id);
-      
-      if (updateError) throw updateError;
-
-      caricaBudget();
-      caricaMovimenti();
-    } catch (error) {
-      alert('Errore: ' + error.message);
-    }
-  }
-
-  async function caricaMovimenti() {
-    try {
-      const { data, error } = await supabase
-        .from('movimenti')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      setMovimenti(data || []);
-    } catch (error) {
-      console.error('Errore caricamento movimenti:', error.message);
-    }
-  }
-
-  // ========== PRONOSTICI SINGOLI ==========
   async function caricaPronostici() {
     try {
       setLoading(true);
@@ -289,312 +221,15 @@ function App() {
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       setPronostici(data || []);
+      
+      data?.forEach(p => caricaCommenti(p.id));
     } catch (error) {
-      console.error('Errore caricamento pronostici:', error.message);
+      console.error('Errore caricamento:', error.message);
     } finally {
       setLoading(false);
     }
   }
 
-  async function aggiungiPronosticoSingolo(partitaId, tipoPronostico, importoPuntata) {
-    if (!importoPuntata || parseFloat(importoPuntata) <= 0) {
-      alert('Inserisci un importo valido!');
-      return;
-    }
-
-    const importo = parseFloat(importoPuntata);
-    if (importo > budget.saldo_attuale) {
-      alert('Saldo insufficiente!');
-      return;
-    }
-
-    const partita = partiteDisponibili.find(p => p.id === partitaId);
-    if (!partita) return;
-
-    const nomePartita = `${partita.squadra_casa} vs ${partita.squadra_trasferta}`;
-    let quota = 0;
-    let label = '';
-
-    switch(tipoPronostico) {
-      case '1': quota = partita.quota_1; label = '1 (Casa)'; break;
-      case 'X': quota = partita.quota_x; label = 'X (Pareggio)'; break;
-      case '2': quota = partita.quota_2; label = '2 (Trasferta)'; break;
-      case 'GOL': quota = partita.quota_gol; label = 'Gol'; break;
-      case 'NOGOL': quota = partita.quota_nogol; label = 'No Gol'; break;
-      case 'OVER25': quota = partita.quota_over_25; label = 'Over 2.5'; break;
-      case 'UNDER25': quota = partita.quota_under_25; label = 'Under 2.5'; break;
-      case '1X': quota = partita.quota_1x; label = '1X'; break;
-      case '12': quota = partita.quota_12; label = '12'; break;
-      case 'X2': quota = partita.quota_x2; label = 'X2'; break;
-    }
-
-    if (!quota) {
-      alert('Quota non disponibile');
-      return;
-    }
-
-    try {
-      // Aggiungi pronostico
-      const { error } = await supabase.from('pronostici').insert([{
-        partita: nomePartita,
-        pronostico: label,
-        quota: quota,
-        importo_puntata: importo,
-        guadagno_netto: (quota * importo) - importo,
-        stato: 'pending',
-        campionato: partita.campionato,
-        data_partita: partita.data_partita,
-        user_id: user.id,
-        partita_id: partita.id
-      }]);
-      if (error) throw error;
-
-      // Registra movimento
-      await aggiungiMovimento('puntata', importo, `Singola: ${nomePartita} - ${label}`);
-      
-      caricaPronostici();
-      alert('✅ Pronostico singolo aggiunto!');
-    } catch (error) {
-      alert('Errore: ' + error.message);
-    }
-  }
-
-  async function aggiornaStatoSingolo(id, nuovoStato) {
-    try {
-      const pronostico = pronostici.find(p => p.id === id);
-      if (!pronostico) return;
-
-      const { error } = await supabase
-        .from('pronostici')
-        .update({ stato: nuovoStato })
-        .eq('id', id);
-      if (error) throw error;
-
-      // Se vinto, aggiungi vincita al budget
-      if (nuovoStato === 'win') {
-        const vincita = pronostico.quota * pronostico.importo_puntata;
-        await aggiungiMovimento('vincita', vincita, `Vincita singola: ${pronostico.partita}`);
-      }
-
-      caricaPronostici();
-    } catch (error) {
-      console.error('Errore aggiornamento:', error.message);
-    }
-  }
-
-  // ========== MULTIPLE ==========
-  async function caricaMultiple() {
-    try {
-      const { data, error } = await supabase
-        .from('multiple')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      // Carica anche i pronostici di ogni multipla
-      const multipleConPronostici = await Promise.all(
-        (data || []).map(async (multipla) => {
-          const { data: pronostici, error: errPronostici } = await supabase
-            .from('pronostici_multiple')
-            .select('*')
-            .eq('multipla_id', multipla.id);
-          
-          return {
-            ...multipla,
-            pronostici: pronostici || []
-          };
-        })
-      );
-
-      setMultiple(multipleConPronostici);
-    } catch (error) {
-      console.error('Errore caricamento multiple:', error.message);
-    }
-  }
-
-  async function caricaTutteLePartite() {
-    try {
-      const { data, error } = await supabase
-        .from('partite')
-        .select('*')
-        .order('data_partita', { ascending: true });
-      if (error) throw error;
-      setTutteLePartite(data || []);
-    } catch (error) {
-      console.error('Errore caricamento partite:', error.message);
-    }
-  }
-
-  function aggiungiPronosticoAMultipla(partita, tipoPronostico) {
-    let quota = 0;
-    let label = '';
-
-    switch(tipoPronostico) {
-      case '1': quota = partita.quota_1; label = '1'; break;
-      case 'X': quota = partita.quota_x; label = 'X'; break;
-      case '2': quota = partita.quota_2; label = '2'; break;
-      case 'GOL': quota = partita.quota_gol; label = 'Gol'; break;
-      case 'NOGOL': quota = partita.quota_nogol; label = 'NG'; break;
-      case 'OVER25': quota = partita.quota_over_25; label = 'O2.5'; break;
-      case 'UNDER25': quota = partita.quota_under_25; label = 'U2.5'; break;
-      case '1X': quota = partita.quota_1x; label = '1X'; break;
-      case '12': quota = partita.quota_12; label = '12'; break;
-      case 'X2': quota = partita.quota_x2; label = 'X2'; break;
-    }
-
-    if (!quota) {
-      alert('Quota non disponibile');
-      return;
-    }
-
-    // Verifica se già presente
-    const giaPresente = nuovaMultipla.pronostici.some(p => p.partita_id === partita.id);
-    if (giaPresente) {
-      alert('Partita già presente nella multipla!');
-      return;
-    }
-
-    setNuovaMultipla(prev => ({
-      ...prev,
-      pronostici: [...prev.pronostici, {
-        partita_id: partita.id,
-        partita_nome: `${partita.squadra_casa} vs ${partita.squadra_trasferta}`,
-        campionato: partita.campionato,
-        data_partita: partita.data_partita,
-        pronostico: label,
-        quota: quota
-      }]
-    }));
-  }
-
-  function rimuoviPronosticoDaMultipla(index) {
-    setNuovaMultipla(prev => ({
-      ...prev,
-      pronostici: prev.pronostici.filter((_, i) => i !== index)
-    }));
-  }
-
-  function calcolaQuotaTotale() {
-    if (nuovaMultipla.pronostici.length === 0) return 1;
-    return nuovaMultipla.pronostici.reduce((acc, p) => acc * p.quota, 1).toFixed(2);
-  }
-
-  function calcolaGuadagnoPotenziale() {
-    const importo = parseFloat(nuovaMultipla.importo) || 0;
-    const quotaTotale = parseFloat(calcolaQuotaTotale());
-    return (importo * quotaTotale).toFixed(2);
-  }
-
-  async function salvaMultipla() {
-    if (!nuovaMultipla.nome.trim()) {
-      alert('Inserisci un nome per la multipla!');
-      return;
-    }
-
-    if (nuovaMultipla.pronostici.length < 2) {
-      alert('Servono almeno 2 pronostici per una multipla!');
-      return;
-    }
-
-    const importo = parseFloat(nuovaMultipla.importo);
-    if (!importo || importo <= 0) {
-      alert('Inserisci un importo valido!');
-      return;
-    }
-
-    if (importo > budget.saldo_attuale) {
-      alert('Saldo insufficiente!');
-      return;
-    }
-
-    try {
-      const quotaTotale = parseFloat(calcolaQuotaTotale());
-      const guadagnoPotenziale = parseFloat(calcolaGuadagnoPotenziale());
-      const guadagnoNetto = guadagnoPotenziale - importo;
-
-      // Crea multipla
-      const { data: multipla, error: errorMultipla } = await supabase
-        .from('multiple')
-        .insert([{
-          user_id: user.id,
-          nome: nuovaMultipla.nome,
-          quota_totale: quotaTotale,
-          importo_puntata: importo,
-          guadagno_potenziale: guadagnoPotenziale,
-          guadagno_netto: guadagnoNetto,
-          stato: 'pending'
-        }])
-        .select()
-        .single();
-
-      if (errorMultipla) throw errorMultipla;
-
-      // Aggiungi pronostici alla multipla
-      const pronosticiDaInserire = nuovaMultipla.pronostici.map(p => ({
-        multipla_id: multipla.id,
-        partita_id: p.partita_id,
-        pronostico: p.pronostico,
-        quota: p.quota,
-        partita_nome: p.partita_nome,
-        campionato: p.campionato,
-        data_partita: p.data_partita,
-        stato: 'pending'
-      }));
-
-      const { error: errorPronostici } = await supabase
-        .from('pronostici_multiple')
-        .insert(pronosticiDaInserire);
-
-      if (errorPronostici) throw errorPronostici;
-
-      // Registra movimento
-      await aggiungiMovimento('puntata', importo, `Multipla: ${nuovaMultipla.nome}`);
-
-      // Reset form
-      setNuovaMultipla({ nome: '', importo: '', pronostici: [] });
-      setSezioneAttiva('multiple');
-      caricaMultiple();
-      alert('✅ Multipla creata con successo!');
-    } catch (error) {
-      alert('Errore: ' + error.message);
-    }
-  }
-
-  async function aggiornaStatoMultipla(multiplaId, nuovoStato) {
-    try {
-      const multipla = multiple.find(m => m.id === multiplaId);
-      if (!multipla) return;
-
-      const { error } = await supabase
-        .from('multiple')
-        .update({ stato: nuovoStato })
-        .eq('id', multiplaId);
-      if (error) throw error;
-
-      // Se vinta, aggiungi vincita
-      if (nuovoStato === 'win') {
-        await aggiungiMovimento('vincita', multipla.guadagno_potenziale, `Vincita multipla: ${multipla.nome}`);
-      }
-
-      caricaMultiple();
-    } catch (error) {
-      console.error('Errore aggiornamento multipla:', error.message);
-    }
-  }
-
-  async function eliminaMultipla(id) {
-    if (!confirm('Eliminare questa multipla?')) return;
-    try {
-      const { error } = await supabase.from('multiple').delete().eq('id', id);
-      if (error) throw error;
-      caricaMultiple();
-    } catch (error) {
-      console.error('Errore eliminazione:', error.message);
-    }
-  }
-
-  // ========== PARTITE ==========
   async function caricaPartite() {
     try {
       let query = supabase.from('partite').select('*').eq('campionato', campionatoSelezionato);
@@ -604,14 +239,69 @@ function App() {
       const { data, error } = await query.order('data_partita', { ascending: true });
       if (error) throw error;
       setPartiteDisponibili(data || []);
+      
+      // Trova l'ultimo batch di importazione
+      if (data && data.length > 0) {
+        const batches = data.map(p => new Date(p.batch_importazione).getTime());
+        const maxBatch = Math.max(...batches);
+        setUltimoBatch(maxBatch);
+        
+        // Filtra solo le partite dell'ultimo batch
+        const partiteRecenti = data.filter(p => 
+          new Date(p.batch_importazione).getTime() === maxBatch
+        );
+        setPartiteUltimoBatch(partiteRecenti);
+      } else {
+        setUltimoBatch(null);
+        setPartiteUltimoBatch([]);
+      }
+      
+      // Carica suggerimenti per ogni partita
+      data?.forEach(p => caricaSuggerimentiPartita(p.id));
     } catch (error) {
       console.error('Errore caricamento partite:', error.message);
     }
   }
 
+  async function caricaSuggerimentiPartita(partitaId) {
+    try {
+      const { data, error } = await supabase
+        .from('suggerimenti_partite')
+        .select('*')
+        .eq('partita_id', partitaId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setSuggerimentiPartite(prev => ({ ...prev, [partitaId]: data || [] }));
+    } catch (error) {
+      console.error('Errore caricamento suggerimenti:', error.message);
+    }
+  }
+
+  async function aggiungiSuggerimento(partitaId) {
+    if (!nuovoSuggerimento[partitaId]?.trim() || !nomeUtente.trim()) {
+      alert('Inserisci nome e suggerimento!');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('suggerimenti_partite').insert([{
+        partita_id: partitaId,
+        user_id: user?.id || null,
+        nome_utente: nomeUtente,
+        suggerimento: nuovoSuggerimento[partitaId]
+      }]);
+      if (error) throw error;
+      setNuovoSuggerimento(prev => ({ ...prev, [partitaId]: '' }));
+      caricaSuggerimentiPartita(partitaId);
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
   function scaricaTemplate() {
     const template = `SQUADRA_CASA\tSQUADRA_TRASFERTA\tCAMPIONATO\tDATA\tORARIO\tQUOTA_1\tQUOTA_X\tQUOTA_2\tQUOTA_NOGOL\tQUOTA_GOL\tQUOTA_UNDER_15\tQUOTA_OVER_15\tQUOTA_UNDER_25\tQUOTA_OVER_25\tQUOTA_UNDER_35\tQUOTA_OVER_35\tQUOTA_1X\tQUOTA_12\tQUOTA_X2
-Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,50\t1,50\t2,60\t2,20\t1,65\t1,30\t1,25\t1,60`;
+Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,50\t1,50\t2,60\t2,20\t1,65\t1,30\t1,25\t1,60
+Juventus\tNapoli\tserie-a\t15/12/2024\t18:00\t1,85\t3,60\t4,20\t3,00\t1,35\t1,15\t5,00\t1,45\t2,75\t2,30\t1,60\t1,20\t1,18\t1,75
+Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25\t4,00\t1,60\t2,40\t2,10\t1,70\t1,35\t1,28\t1,85`;
     
     const blob = new Blob([template], { type: 'text/tab-separated-values' });
     const url = URL.createObjectURL(blob);
@@ -626,31 +316,40 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(l => l.trim());
+      const headers = lines[0].split('\t');
       const partite = [];
+      
+      // Timestamp univoco per questo batch di importazione
       const batchTimestamp = new Date().toISOString();
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split('\t');
-        if (values.length < 19) continue;
+        if (values.length < headers.length) continue;
 
+        // Converti data da formato italiano (GG/MM/AAAA) a formato SQL (AAAA-MM-GG)
         let dataSQL = values[3]?.trim();
         if (dataSQL && dataSQL.includes('/')) {
           const [giorno, mese, anno] = dataSQL.split('/');
           dataSQL = `${anno}-${mese.padStart(2, '0')}-${giorno.padStart(2, '0')}`;
         }
 
+        // Orario (formato HH:MM)
+        const orario = values[4]?.trim() || null;
+
+        // Funzione per convertire quota con virgola in numero
         const parseQuota = (val) => {
           if (!val) return null;
-          const num = parseFloat(val.toString().trim().replace(',', '.'));
+          const str = val.toString().trim().replace(',', '.');
+          const num = parseFloat(str);
           return isNaN(num) ? null : num;
         };
 
-        partite.push({
+        const partita = {
           squadra_casa: values[0]?.trim(),
           squadra_trasferta: values[1]?.trim(),
           campionato: values[2]?.trim(),
           data_partita: dataSQL,
-          orario: values[4]?.trim() || null,
+          orario: orario,
           quota_1: parseQuota(values[5]),
           quota_x: parseQuota(values[6]),
           quota_2: parseQuota(values[7]),
@@ -667,17 +366,304 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
           quota_x2: parseQuota(values[18]),
           user_id: user.id,
           batch_importazione: batchTimestamp
-        });
+        };
+        
+        if (partita.squadra_casa && partita.squadra_trasferta && partita.data_partita) {
+          partite.push(partita);
+        }
+      }
+
+      if (partite.length === 0) {
+        alert('Nessuna partita valida trovata nel file');
+        return;
       }
 
       const { error } = await supabase.from('partite').insert(partite);
       if (error) throw error;
 
-      alert(`✅ ${partite.length} partite importate!`);
+      alert(`✅ ${partite.length} partite importate con successo!`);
       caricaPartite();
-      caricaTutteLePartite();
     } catch (error) {
       alert('Errore importazione: ' + error.message);
+    }
+  }
+
+  async function caricaCommenti(pronosticoId) {
+    try {
+      const { data, error } = await supabase
+        .from('commenti')
+        .select('*')
+        .eq('pronostico_id', pronosticoId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setCommenti(prev => ({ ...prev, [pronosticoId]: data || [] }));
+    } catch (error) {
+      console.error('Errore caricamento commenti:', error.message);
+    }
+  }
+
+  async function aggiungiPronostico(e) {
+    e.preventDefault();
+    const { partita, pronostico, quota } = nuovoPronostico;
+    if (!partita || !pronostico || !quota) {
+      alert('Compila tutti i campi!');
+      return;
+    }
+    
+    // Separa le squadre dal testo inserito
+    const parti = partita.split(' vs ');
+    if (parti.length !== 2) {
+      alert('Formato non valido. Usa: "Squadra Casa vs Squadra Trasferta"');
+      return;
+    }
+    
+    const squadraCasaCercata = parti[0].trim().toLowerCase();
+    const squadraTrasfertaCercata = parti[1].trim().toLowerCase();
+    
+    // Trova la partita con ricerca flessibile (match parziale)
+    const partitaTrovata = partiteDisponibili.find((p) => {
+      const casaDB = p.squadra_casa.toLowerCase();
+      const trasfertaDB = p.squadra_trasferta.toLowerCase();
+      
+      // Match esatto o parziale per entrambe le squadre
+      const matchCasa = casaDB.includes(squadraCasaCercata) || squadraCasaCercata.includes(casaDB);
+      const matchTrasferta = trasfertaDB.includes(squadraTrasfertaCercata) || squadraTrasfertaCercata.includes(trasfertaDB);
+      
+      return matchCasa && matchTrasferta;
+    });
+    
+    if (!partitaTrovata) {
+      alert('Partita non trovata tra quelle caricate.\n\nAssicurati che:\n- La partita sia già stata importata\n- Il formato sia "Casa vs Trasferta"\n- I nomi delle squadre siano simili a quelli nel database');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: `${partitaTrovata.squadra_casa} vs ${partitaTrovata.squadra_trasferta}`,
+        pronostico,
+        quota: parseFloat(quota),
+        stato: 'pending',
+        campionato: partitaTrovata.campionato,
+        data_partita: partitaTrovata.data_partita, // 🔹 usa la data della partita
+        user_id: user.id,
+        partita_id: partitaTrovata.id              // 🔹 collega alla partita
+      }]);
+      if (error) throw error;
+      setNuovoPronostico({ partita: '', pronostico: '', quota: '' });
+      caricaPronostici();
+      alert('✅ Pronostico aggiunto con successo!');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  function filtraSquadre(testo, tipo) {
+    if (!testo || testo.length < 2) {
+      setSuggerimentiSquadre(prev => ({ ...prev, [tipo]: [] }));
+      setMostraSuggerimentiSquadre(prev => ({ ...prev, [tipo]: false }));
+      return;
+    }
+    
+    const filtrate = Object.keys(STEMMI_SQUADRE).filter(nome => 
+      nome.toLowerCase().includes(testo.toLowerCase())
+    );
+    
+    setSuggerimentiSquadre(prev => ({ ...prev, [tipo]: filtrate }));
+    setMostraSuggerimentiSquadre(prev => ({ ...prev, [tipo]: filtrate.length > 0 }));
+  }
+
+  function selezionaSquadra(squadra, tipo) {
+    const partite = nuovoPronostico.partita.split(' vs ');
+    if (tipo === 'casa') {
+      setNuovoPronostico({...nuovoPronostico, partita: `${squadra} vs ${partite[1] || ''}`});
+    } else {
+      setNuovoPronostico({...nuovoPronostico, partita: `${partite[0] || ''} vs ${squadra}`});
+    }
+    setMostraSuggerimentiSquadre({ casa: false, trasferta: false });
+  }
+
+  async function aggiungiPronosticoDaPartita(e) {
+    e.preventDefault();
+    if (!partitaSelezionata || !pronosticoSelezionato) {
+      alert('Seleziona una partita e un pronostico!');
+      return;
+    }
+
+    const partita = partiteDisponibili.find(p => p.id === partitaSelezionata);
+    if (!partita) return;
+
+    const nomePartita = `${partita.squadra_casa} vs ${partita.squadra_trasferta}`;
+    let quota = 0;
+    let tipoPronostico = '';
+
+    switch(pronosticoSelezionato) {
+      case '1': quota = partita.quota_1; tipoPronostico = '1 (Casa)'; break;
+      case 'X': quota = partita.quota_x; tipoPronostico = 'X (Pareggio)'; break;
+      case '2': quota = partita.quota_2; tipoPronostico = '2 (Trasferta)'; break;
+      case 'NOGOL': quota = partita.quota_nogol; tipoPronostico = 'No Gol'; break;
+      case 'GOL': quota = partita.quota_gol; tipoPronostico = 'Gol'; break;
+      case 'UNDER15': quota = partita.quota_under_15; tipoPronostico = 'Under 1.5'; break;
+      case 'OVER15': quota = partita.quota_over_15; tipoPronostico = 'Over 1.5'; break;
+      case 'UNDER25': quota = partita.quota_under_25; tipoPronostico = 'Under 2.5'; break;
+      case 'OVER25': quota = partita.quota_over_25; tipoPronostico = 'Over 2.5'; break;
+      case 'UNDER35': quota = partita.quota_under_35; tipoPronostico = 'Under 3.5'; break;
+      case 'OVER35': quota = partita.quota_over_35; tipoPronostico = 'Over 3.5'; break;
+      case '1X': quota = partita.quota_1x; tipoPronostico = '1X'; break;
+      case '12': quota = partita.quota_12; tipoPronostico = '12'; break;
+      case 'X2': quota = partita.quota_x2; tipoPronostico = 'X2'; break;
+    }
+
+    if (!quota) {
+      alert('Quota non disponibile per questo pronostico');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: nomePartita,
+        pronostico: tipoPronostico,
+        quota: quota,
+        stato: 'pending',
+        campionato: partita.campionato,
+        data_partita: partita.data_partita,
+        user_id: user.id,
+        partita_id: partita.id
+      }]);
+      if (error) throw error;
+      
+      setPartitaSelezionata(null);
+      setPronosticoSelezionato('');
+      caricaPronostici();
+      alert('Pronostico aggiunto con successo!');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiungiPronosticoVeloce(partitaId, tipoPronostico) {
+    const partita = partiteDisponibili.find(p => p.id === partitaId);
+    if (!partita) return;
+
+    const nomePartita = `${partita.squadra_casa} vs ${partita.squadra_trasferta}`;
+    let quota = 0;
+    let label = '';
+
+    switch(tipoPronostico) {
+      case '1': quota = partita.quota_1; label = '1 (Casa)'; break;
+      case 'X': quota = partita.quota_x; label = 'X (Pareggio)'; break;
+      case '2': quota = partita.quota_2; label = '2 (Trasferta)'; break;
+      case 'NOGOL': quota = partita.quota_nogol; label = 'No Gol'; break;
+      case 'GOL': quota = partita.quota_gol; label = 'Gol'; break;
+      case 'UNDER25': quota = partita.quota_under_25; label = 'Under 2.5'; break;
+      case 'OVER25': quota = partita.quota_over_25; label = 'Over 2.5'; break;
+      case '1X': quota = partita.quota_1x; label = '1X'; break;
+      case '12': quota = partita.quota_12; label = '12'; break;
+      case 'X2': quota = partita.quota_x2; label = 'X2'; break;
+    }
+
+    if (!quota) {
+      alert('Quota non disponibile');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('pronostici').insert([{
+        partita: nomePartita,
+        pronostico: label,
+        quota: quota,
+        stato: 'pending',
+        campionato: partita.campionato,
+        data_partita: partita.data_partita,
+        user_id: user.id,
+        partita_id: partita.id
+      }]);
+      if (error) throw error;
+      caricaPronostici();
+      alert('✅ Pronostico aggiunto!');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function aggiornaStato(id, nuovoStato) {
+    try {
+      const { error } = await supabase.from('pronostici').update({ stato: nuovoStato }).eq('id', id);
+      if (error) throw error;
+      caricaPronostici();
+    } catch (error) {
+      console.error('Errore aggiornamento:', error.message);
+    }
+  }
+
+  async function eliminaPronostico(id) {
+    if (!confirm('Sei sicuro?')) return;
+    try {
+      const { error } = await supabase.from('pronostici').delete().eq('id', id);
+      if (error) throw error;
+      caricaPronostici();
+    } catch (error) {
+      console.error('Errore eliminazione:', error.message);
+    }
+  }
+
+  async function eliminaPartita(id) {
+    if (!confirm('Sei sicuro di voler eliminare questa partita? Verranno eliminati anche tutti i pronostici e suggerimenti collegati.')) return;
+    try {
+      const { error } = await supabase.from('partite').delete().eq('id', id);
+      if (error) throw error;
+      caricaPartite();
+      caricaPronostici();
+      alert('✅ Partita eliminata con successo!');
+    } catch (error) {
+      console.error('Errore eliminazione partita:', error.message);
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  async function eliminaTuttePartite() {
+    if (!confirm('⚠️ SEI SICURO di voler eliminare TUTTE le partite del campionato selezionato?\n\nQuesta azione eliminerà:\n- Tutte le partite\n- Tutti i pronostici collegati\n- Tutti i suggerimenti\n\nNON È REVERSIBILE!')) return;
+    
+    if (!confirm('🚨 ULTIMA CONFERMA!\n\nStai per eliminare TUTTE le partite di ' + campionatoCorrente?.nome + '\n\nSei ASSOLUTAMENTE sicuro?')) return;
+
+    try {
+      setLoading(true);
+      
+      // Elimina tutte le partite del campionato selezionato
+      const { error } = await supabase
+        .from('partite')
+        .delete()
+        .eq('campionato', campionatoSelezionato);
+
+      if (error) throw error;
+
+      alert('✅ Tutte le partite sono state eliminate!');
+      caricaPartite();
+      caricaPronostici();
+    } catch (error) {
+      console.error('Errore eliminazione:', error.message);
+      alert('Errore: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function aggiungiCommento(pronosticoId) {
+    if (!nuovoCommento[pronosticoId]?.trim() || !nomeUtente.trim()) {
+      alert('Inserisci nome e commento!');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('commenti').insert([{
+        pronostico_id: pronosticoId,
+        user_id: user?.id || null,
+        nome_utente: nomeUtente,
+        testo: nuovoCommento[pronosticoId]
+      }]);
+      if (error) throw error;
+      setNuovoCommento(prev => ({ ...prev, [pronosticoId]: '' }));
+      caricaCommenti(pronosticoId);
+    } catch (error) {
+      alert('Errore: ' + error.message);
     }
   }
 
@@ -697,37 +683,17 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
     dataOggetto.setHours(0, 0, 0, 0);
     if (dataOggetto.getTime() === oggi.getTime()) return 'Oggi';
     if (dataOggetto.getTime() === domani.getTime()) return 'Domani';
-    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+    return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
   const statistiche = {
-    singole: {
-      totali: pronostici.length,
-      vinte: pronostici.filter(p => p.stato === 'win').length,
-      perse: pronostici.filter(p => p.stato === 'loss').length,
-      pending: pronostici.filter(p => p.stato === 'pending').length,
-      incassato: pronostici.filter(p => p.stato === 'win').reduce((acc, p) => acc + (p.quota * p.importo_puntata), 0),
-      speso: pronostici.reduce((acc, p) => acc + (p.importo_puntata || 0), 0)
-    },
-    multiple: {
-      totali: multiple.length,
-      vinte: multiple.filter(m => m.stato === 'win').length,
-      perse: multiple.filter(m => m.stato === 'loss').length,
-      pending: multiple.filter(m => m.stato === 'pending').length,
-      incassato: multiple.filter(m => m.stato === 'win').reduce((acc, m) => acc + m.guadagno_potenziale, 0),
-      speso: multiple.reduce((acc, m) => acc + m.importo_puntata, 0)
-    }
+    totali: pronostici.length,
+    vinti: pronostici.filter(p => p.stato === 'win').length,
+    persi: pronostici.filter(p => p.stato === 'loss').length,
+    pending: pronostici.filter(p => p.stato === 'pending').length
   };
 
   const campionatoCorrente = CAMPIONATI.find(c => c.id === campionatoSelezionato);
-
-  // Filtro partite per multipla
-  const partiteFiltrate = tutteLePartite.filter(p => {
-    if (filtriMultipla.campionato !== 'tutti' && p.campionato !== filtriMultipla.campionato) return false;
-    if (filtriMultipla.dataInizio && p.data_partita < filtriMultipla.dataInizio) return false;
-    if (filtriMultipla.dataFine && p.data_partita > filtriMultipla.dataFine) return false;
-    return true;
-  });
 
   if (loading) {
     return (
@@ -741,7 +707,7 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">⚽ Pronostici Pro</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">⚽ Pronostici</h1>
           
           {!mostraRegistrazione ? (
             <>
@@ -820,14 +786,13 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">⚽ Pronostici Pro</h1>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">⚽ Gestione Pronostici</h1>
               <p className="text-gray-600">
-                {isAdmin ? '👑 Admin' : '👤 User'} | Saldo: <span className="font-bold text-green-600">€{budget?.saldo_attuale?.toFixed(2) || '0.00'}</span>
+                {isAdmin ? '👑 Modalità Admin' : '👀 Modalità Visualizzazione'}
               </p>
             </div>
             <button onClick={logout} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
@@ -836,839 +801,628 @@ Inter\tMilan\tserie-a\t15/12/2024\t20:45\t2,10\t3,40\t3,50\t2,80\t1,40\t1,20\t4,
           </div>
         </div>
 
-        {/* Menu Principale */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={() => setSezioneAttiva('singole')}
-              className={`py-3 px-4 rounded-lg font-semibold transition ${
-                sezioneAttiva === 'singole' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🎯 Singole ({statistiche.singole.pending})
-            </button>
-            <button
-              onClick={() => setSezioneAttiva('multiple')}
-              className={`py-3 px-4 rounded-lg font-semibold transition ${
-                sezioneAttiva === 'multiple' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🎰 Multiple ({statistiche.multiple.pending})
-            </button>
-            <button
-              onClick={() => setSezioneAttiva('crea-multipla')}
-              className={`py-3 px-4 rounded-lg font-semibold transition ${
-                sezioneAttiva === 'crea-multipla' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              ➕ Crea Multipla
-            </button>
-            <button
-              onClick={() => setSezioneAttiva('budget')}
-              className={`py-3 px-4 rounded-lg font-semibold transition ${
-                sezioneAttiva === 'budget' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💰 Budget
-            </button>
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Seleziona Campionato</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {CAMPIONATI.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCampionatoSelezionato(c.id)}
+                className={`p-3 rounded-lg font-medium transition ${
+                  campionatoSelezionato === c.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {c.logo ? (
+                  <img 
+                    src={c.logo} 
+                    alt={c.nome}
+                    className="w-12 h-12 mx-auto mb-1 object-contain"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                  />
+                ) : null}
+                <div className="text-2xl mb-1" style={{ display: c.logo ? 'none' : 'block' }}>{c.emoji}</div>
+                <div className="text-xs">{c.nome.replace(/\(.*?\)/g, '').trim()}</div>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* ========== SEZIONE SINGOLE ========== */}
-        {sezioneAttiva === 'singole' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Statistiche Singole */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Statistiche Singole</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">{statistiche.singole.totali}</div>
-                    <div className="text-xs text-gray-600">Totali</div>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">{statistiche.singole.vinte}</div>
-                    <div className="text-xs text-gray-600">Vinte</div>
-                  </div>
-                  <div className="bg-red-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-red-600">{statistiche.singole.perse}</div>
-                    <div className="text-xs text-gray-600">Perse</div>
-                  </div>
-                  <div className="bg-yellow-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-yellow-600">{statistiche.singole.pending}</div>
-                    <div className="text-xs text-gray-600">Pending</div>
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                {campionatoCorrente?.logo ? (
+                  <img src={campionatoCorrente.logo} alt={campionatoCorrente.nome} className="w-8 h-8 object-contain" />
+                ) : (
+                  <span>{campionatoCorrente?.emoji}</span>
+                )}
+                {campionatoCorrente?.nome}
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{statistiche.totali}</div>
+                  <div className="text-xs text-gray-600">Totali</div>
                 </div>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600">Speso:</span>
-                    <span className="font-bold text-red-600">€{statistiche.singole.speso.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Incassato:</span>
-                    <span className="font-bold text-green-600">€{statistiche.singole.incassato.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-2 pt-2 border-t font-bold">
-                    <span>Bilancio:</span>
-                    <span className={statistiche.singole.incassato - statistiche.singole.speso >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      €{(statistiche.singole.incassato - statistiche.singole.speso).toFixed(2)}
-                    </span>
-                  </div>
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{statistiche.vinti}</div>
+                  <div className="text-xs text-gray-600">Vinti</div>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600">{statistiche.persi}</div>
+                  <div className="text-xs text-gray-600">Persi</div>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{statistiche.pending}</div>
+                  <div className="text-xs text-gray-600">In attesa</div>
                 </div>
               </div>
+            </div>
 
-              {/* Filtri */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 Filtri</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Campionato</label>
-                    <select
-                      value={campionatoSelezionato}
-                      onChange={(e) => setCampionatoSelezionato(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      {CAMPIONATI.map(c => (
-                        <option key={c.id} value={c.id}>{c.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Vista</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setVistaCorrente('giorno')}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                          vistaCorrente === 'giorno' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        Per Giorno
-                      </button>
-                      <button
-                        onClick={() => setVistaCorrente('tutti')}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                          vistaCorrente === 'tutti' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        Tutti
-                      </button>
-                    </div>
-                  </div>
-                  {vistaCorrente === 'giorno' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
-                      <div className="flex items-center gap-2 mb-2">
-                        <button onClick={() => cambiaGiorno(-1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">←</button>
-                        <span className="flex-1 text-center font-medium">{formattaData(dataSelezionata)}</span>
-                        <button onClick={() => cambiaGiorno(1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">→</button>
-                      </div>
-                      <input
-                        type="date"
-                        value={dataSelezionata}
-                        onChange={(e) => setDataSelezionata(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
-                </div>
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 Seleziona Data</h3>
+              <div className="flex gap-2 mb-4">
+                <button onClick={() => setVistaCorrente('giorno')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${vistaCorrente === 'giorno' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Per Giorno</button>
+                <button onClick={() => setVistaCorrente('tutti')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${vistaCorrente === 'tutti' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Tutti</button>
               </div>
-
-              {/* Import (solo Admin) */}
-              {isAdmin && (
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">📥 Importa Partite</h3>
-                  <div className="space-y-3">
-                    <button
-                      onClick={scaricaTemplate}
-                      className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-                    >
-                      📄 Scarica Template
-                    </button>
-                    <input
-                      type="file"
-                      accept=".tsv,.txt,.csv"
-                      onChange={(e) => e.target.files[0] && importaExcel(e.target.files[0])}
-                      className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700"
-                    />
+              {vistaCorrente === 'giorno' && (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <button onClick={() => cambiaGiorno(-1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">←</button>
+                    <span className="font-medium text-gray-800 flex-1 text-center">{formattaData(dataSelezionata)}</span>
+                    <button onClick={() => cambiaGiorno(1)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">→</button>
                   </div>
-                </div>
+                  <input type="date" value={dataSelezionata} onChange={(e) => setDataSelezionata(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </>
               )}
             </div>
 
-            {/* Contenuto Principale - Partite e Pronostici */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Partite Disponibili */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Partite Disponibili</h2>
-                {partiteDisponibili.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="text-4xl mb-3">⚽</div>
-                    <p>Nessuna partita disponibile</p>
+            {isAdmin && (
+              <>
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">📥 Importa Partite</h2>
+                  <div className="space-y-3">
+                    <button
+                      onClick={scaricaTemplate}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
+                    >
+                      <span>📄</span> Scarica Template Excel
+                    </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Carica file Excel/TSV
+                      </label>
+                      <input
+                        type="file"
+                        accept=".tsv,.txt,.csv"
+                        onChange={(e) => e.target.files[0] && importaExcel(e.target.files[0])}
+                        className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Formato: TSV (Tab Separated Values)
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {partiteDisponibili.map((partita) => (
-                      <div key={partita.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getStemmaSquadra(partita.squadra_casa) && (
-                                <img src={getStemmaSquadra(partita.squadra_casa)} alt="" className="w-6 h-6" />
-                              )}
-                              <span className="font-bold">{partita.squadra_casa}</span>
-                              <span className="text-gray-500">vs</span>
-                              <span className="font-bold">{partita.squadra_trasferta}</span>
-                              {getStemmaSquadra(partita.squadra_trasferta) && (
-                                <img src={getStemmaSquadra(partita.squadra_trasferta)} alt="" className="w-6 h-6" />
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {formattaData(partita.data_partita)} {partita.orario && `- ${partita.orario.slice(0, 5)}`}
-                            </div>
-                          </div>
-                        </div>
+                </div>
 
-                        {isAdmin && (
-                          <div className="grid grid-cols-5 gap-2">
-                            {partita.quota_1 && (
-                              <button
-                                onClick={() => {
-                                  const importo = prompt('Importo puntata (€):');
-                                  if (importo) aggiungiPronosticoSingolo(partita.id, '1', importo);
-                                }}
-                                className="py-2 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600"
-                              >
-                                1<br/>{partita.quota_1}
-                              </button>
-                            )}
-                            {partita.quota_x && (
-                              <button
-                                onClick={() => {
-                                  const importo = prompt('Importo puntata (€):');
-                                  if (importo) aggiungiPronosticoSingolo(partita.id, 'X', importo);
-                                }}
-                                className="py-2 bg-gray-500 text-white rounded text-xs font-semibold hover:bg-gray-600"
-                              >
-                                X<br/>{partita.quota_x}
-                              </button>
-                            )}
-                            {partita.quota_2 && (
-                              <button
-                                onClick={() => {
-                                  const importo = prompt('Importo puntata (€):');
-                                  if (importo) aggiungiPronosticoSingolo(partita.id, '2', importo);
-                                }}
-                                className="py-2 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600"
-                              >
-                                2<br/>{partita.quota_2}
-                              </button>
-                            )}
-                            {partita.quota_gol && (
-                              <button
-                                onClick={() => {
-                                  const importo = prompt('Importo puntata (€):');
-                                  if (importo) aggiungiPronosticoSingolo(partita.id, 'GOL', importo);
-                                }}
-                                className="py-2 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600"
-                              >
-                                GOL<br/>{partita.quota_gol}
-                              </button>
-                            )}
-                            {partita.quota_over_25 && (
-                              <button
-                                onClick={() => {
-                                  const importo = prompt('Importo puntata (€):');
-                                  if (importo) aggiungiPronosticoSingolo(partita.id, 'OVER25', importo);
-                                }}
-                                className="py-2 bg-orange-500 text-white rounded text-xs font-semibold hover:bg-orange-600"
-                              >
-                                O2.5<br/>{partita.quota_over_25}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {isAdmin && partiteDisponibili.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">🗑️ Gestione Partite</h2>
+                    <button
+                      onClick={eliminaTuttePartite}
+                      className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-red-700 flex items-center justify-center gap-2"
+                    >
+                      <span>🗑️</span> Elimina Tutte le Partite ({campionatoCorrente?.nome})
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      ⚠️ Elimina tutte le partite del campionato selezionato
+                    </p>
                   </div>
                 )}
-              </div>
 
-              {/* I Miei Pronostici Singoli */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Aggiungi da Partite</h2>
+                  {partiteUltimoBatch.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      Nessuna partita nell'ultima importazione. Importa nuove partite.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs text-green-700 font-medium">
+                          📥 Ultima importazione: {partiteUltimoBatch.length} partite
+                        </p>
+                      </div>
+                      <form onSubmit={aggiungiPronosticoDaPartita} className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Seleziona Partita (ultima importazione)
+                          </label>
+                          <select
+                            value={partitaSelezionata || ''}
+                            onChange={(e) => setPartitaSelezionata(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-- Seleziona partita --</option>
+                            {partiteUltimoBatch.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.squadra_casa} vs {p.squadra_trasferta} ({formattaData(p.data_partita)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {partitaSelezionata && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Seleziona Pronostico
+                            </label>
+                            <select
+                              value={pronosticoSelezionato}
+                              onChange={(e) => setPronosticoSelezionato(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">-- Seleziona pronostico --</option>
+                              {(() => {
+                                const p = partiteDisponibili.find(pt => pt.id === partitaSelezionata);
+                                if (!p) return null;
+                                return (
+                                  <>
+                                    {p.quota_1 && <option value="1">1 (Casa) - {p.quota_1}</option>}
+                                    {p.quota_x && <option value="X">X (Pareggio) - {p.quota_x}</option>}
+                                    {p.quota_2 && <option value="2">2 (Trasferta) - {p.quota_2}</option>}
+                                    {p.quota_nogol && <option value="NOGOL">No Gol - {p.quota_nogol}</option>}
+                                    {p.quota_gol && <option value="GOL">Gol - {p.quota_gol}</option>}
+                                    {p.quota_under_15 && <option value="UNDER15">Under 1.5 - {p.quota_under_15}</option>}
+                                    {p.quota_over_15 && <option value="OVER15">Over 1.5 - {p.quota_over_15}</option>}
+                                    {p.quota_under_25 && <option value="UNDER25">Under 2.5 - {p.quota_under_25}</option>}
+                                    {p.quota_over_25 && <option value="OVER25">Over 2.5 - {p.quota_over_25}</option>}
+                                    {p.quota_under_35 && <option value="UNDER35">Under 3.5 - {p.quota_under_35}</option>}
+                                    {p.quota_over_35 && <option value="OVER35">Over 3.5 - {p.quota_over_35}</option>}
+                                    {p.quota_1x && <option value="1X">1X - {p.quota_1x}</option>}
+                                    {p.quota_12 && <option value="12">12 - {p.quota_12}</option>}
+                                    {p.quota_x2 && <option value="X2">X2 - {p.quota_x2}</option>}
+                                  </>
+                                );
+                              })()}
+                            </select>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+                        >
+                          Aggiungi Pronostico
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">✍️ Inserimento Manuale</h2>
+                  <form onSubmit={aggiungiPronostico} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Partita</label>
+                      <input
+                        type="text"
+                        value={nuovoPronostico.partita}
+                        onChange={(e) => {
+                          setNuovoPronostico({...nuovoPronostico, partita: e.target.value});
+                          const parti = e.target.value.split(' vs ');
+                          if (parti.length === 1) {
+                            filtraSquadre(parti[0], 'casa');
+                          } else if (parti.length === 2) {
+                            filtraSquadre(parti[1], 'trasferta');
+                          }
+                        }}
+                        placeholder="es. Inter vs Milan"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                      {mostraSuggerimentiSquadre.casa && suggerimentiSquadre.casa.length > 0 && (
+                        <div className="mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {suggerimentiSquadre.casa.map((squadra) => (
+                            <button
+                              key={squadra}
+                              type="button"
+                              onClick={() => selezionaSquadra(squadra, 'casa')}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2"
+                            >
+                              {getStemmaSquadra(squadra) && (
+                                <img 
+                                  src={getStemmaSquadra(squadra)} 
+                                  alt={squadra}
+                                  className="w-6 h-6 object-contain"
+                                />
+                              )}
+                              <span className="text-sm">{squadra}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {mostraSuggerimentiSquadre.trasferta && suggerimentiSquadre.trasferta.length > 0 && (
+                        <div className="mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {suggerimentiSquadre.trasferta.map((squadra) => (
+                            <button
+                              key={squadra}
+                              type="button"
+                              onClick={() => selezionaSquadra(squadra, 'trasferta')}
+                              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2"
+                            >
+                              {getStemmaSquadra(squadra) && (
+                                <img 
+                                  src={getStemmaSquadra(squadra)} 
+                                  alt={squadra}
+                                  className="w-6 h-6 object-contain"
+                                />
+                              )}
+                              <span className="text-sm">{squadra}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Inizia a scrivere per vedere i suggerimenti con gli stemmi
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pronostico</label>
+                      <input type="text" value={nuovoPronostico.pronostico} onChange={(e) => setNuovoPronostico({...nuovoPronostico, pronostico: e.target.value})} placeholder="es. 1X, Over 2.5" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                      <input type="number" step="0.01" value={nuovoPronostico.quota} onChange={(e) => setNuovoPronostico({...nuovoPronostico, quota: e.target.value})} placeholder="es. 1.85" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">Aggiungi Pronostico</button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="lg:col-span-2">
+            {/* Toggle tra Pronostici e Partite */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMostraPartite(false)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
+                    !mostraPartite ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  🎯 I Miei Pronostici
+                </button>
+                <button
+                  onClick={() => setMostraPartite(true)}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
+                    mostraPartite ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  ⚽ Tutte le Partite
+                </button>
+              </div>
+            </div>
+
+            {!mostraPartite ? (
+              /* SEZIONE PRONOSTICI */
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">🎯 I Miei Pronostici Singoli</h2>
-                {pronostici.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">I Miei Pronostici {vistaCorrente === 'giorno' ? `- ${formattaData(dataSelezionata)}` : ''}</h2>
+                {loading ? (
+                  <div className="text-center py-12 text-gray-500">Caricamento...</div>
+                ) : pronostici.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
                     <div className="text-4xl mb-3">📋</div>
-                    <p>Nessun pronostico</p>
+                    <p>Nessun pronostico disponibile.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {pronostici.map((p) => (
                       <div key={p.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳'}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                // Cerca prima per ID, poi per nome partita
+                                let partitaCollegata = partiteDisponibili.find(pt => pt.id === p.partita_id);
+                                
+                                if (!partitaCollegata) {
+                                  // Cerca per nome se non trova per ID
+                                  const parti = p.partita.split(' vs ');
+                                  if (parti.length === 2) {
+                                    const casaCercata = parti[0].trim().toLowerCase();
+                                    const trasfertaCercata = parti[1].trim().toLowerCase();
+                                    partitaCollegata = partiteDisponibili.find(pt => {
+                                      const casaDB = pt.squadra_casa.toLowerCase();
+                                      const trasfertaDB = pt.squadra_trasferta.toLowerCase();
+                                      const matchCasa = casaDB.includes(casaCercata) || casaCercata.includes(casaDB);
+                                      const matchTrasferta = trasfertaDB.includes(trasfertaCercata) || trasfertaCercata.includes(trasfertaDB);
+                                      return matchCasa && matchTrasferta && pt.data_partita === p.data_partita;
+                                    });
+                                  }
+                                }
+                                
+                                return partitaCollegata?.orario ? (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded whitespace-nowrap">
+                                    🕐 {partitaCollegata.orario.slice(0, 5)}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {vistaCorrente === 'tutti' && (
+                                <span className="text-xs bg-gray-100 px-2 py-1 rounded whitespace-nowrap">{formattaData(p.data_partita)}</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {(() => {
+                            const squadre = p.partita.split(' vs ');
+                            const squadraCasa = squadre[0]?.trim();
+                            const squadraTrasferta = squadre[1]?.trim();
+                            return (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {getStemmaSquadra(squadraCasa) && (
+                                  <img 
+                                    src={getStemmaSquadra(squadraCasa)} 
+                                    alt={squadraCasa}
+                                    className="w-6 h-6 object-contain flex-shrink-0"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                )}
+                                <h3 className="font-semibold text-gray-800 text-base">{p.partita}</h3>
+                                {getStemmaSquadra(squadraTrasferta) && (
+                                  <img 
+                                    src={getStemmaSquadra(squadraTrasferta)} 
+                                    alt={squadraTrasferta}
+                                    className="w-6 h-6 object-contain flex-shrink-0"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <p className="text-gray-600 text-sm"><span className="font-medium">Pronostico:</span> {p.pronostico}</p>
+                          <p className="text-gray-600 text-sm"><span className="font-medium">Quota:</span> {p.quota}</p>
+                        </div>
+                        
+                        {isAdmin && (
+                          <div className="flex gap-2 mt-3 mb-3">
+                            {p.stato === 'pending' && (
+                              <>
+                                <button onClick={() => aggiornaStato(p.id, 'win')} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Vinto</button>
+                                <button onClick={() => aggiornaStato(p.id, 'loss')} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">Perso</button>
+                              </>
+                            )}
+                            <button onClick={() => eliminaPronostico(p.id)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm ml-auto">Elimina</button>
+                          </div>
+                        )}
+
+                        <div className="border-t pt-3 mt-3">
+                          <button onClick={() => setMostraCommenti(prev => ({ ...prev, [p.id]: !prev[p.id] }))} className="text-sm text-blue-600 hover:underline mb-2">
+                            {mostraCommenti[p.id] ? '▼' : '▶'} Commenti ({commenti[p.id]?.length || 0})
+                          </button>
+                          
+                          {mostraCommenti[p.id] && (
+                            <div className="mt-3 space-y-3">
+                              {commenti[p.id]?.map((c) => (
+                                <div key={c.id} className="bg-gray-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-800">{c.nome_utente}</span>
+                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString('it-IT')}</span>
+                                  </div>
+                                  <p className="text-gray-700 text-sm">{c.testo}</p>
+                                </div>
+                              ))}
+                              
+                              <div className="mt-3">
+                                <input
+                                  type="text"
+                                  value={nomeUtente}
+                                  onChange={(e) => setNomeUtente(e.target.value)}
+                                  placeholder="Il tuo nome"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={nuovoCommento[p.id] || ''}
+                                    onChange={(e) => setNuovoCommento(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                    placeholder="Scrivi un commento..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <button onClick={() => aggiungiCommento(p.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Invia</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* SEZIONE PARTITE */
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Tutte le Partite {vistaCorrente === 'giorno' ? `- ${formattaData(dataSelezionata)}` : ''}</h2>
+                {loading ? (
+                  <div className="text-center py-12 text-gray-500">Caricamento...</div>
+                ) : partiteDisponibili.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="text-4xl mb-3">⚽</div>
+                    <p>Nessuna partita disponibile.</p>
+                    {isAdmin && <p className="text-sm mt-2">Importa le partite dal menu a sinistra.</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {partiteDisponibili.map((partita) => (
+                      <div key={partita.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                        <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                p.stato === 'win' ? 'bg-green-100 text-green-800' :
-                                p.stato === 'loss' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳ Pending'}
-                              </span>
-                              <span className="text-xs text-gray-600">{formattaData(p.data_partita)}</span>
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                {getStemmaSquadra(partita.squadra_casa) && (
+                                  <img 
+                                    src={getStemmaSquadra(partita.squadra_casa)} 
+                                    alt={partita.squadra_casa}
+                                    className="w-8 h-8 object-contain"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                )}
+                                <span className="font-bold text-gray-800">{partita.squadra_casa}</span>
+                              </div>
+                              <span className="text-gray-500 font-bold">vs</span>
+                              <div className="flex items-center gap-2 flex-1 justify-end">
+                                <span className="font-bold text-gray-800">{partita.squadra_trasferta}</span>
+                                {getStemmaSquadra(partita.squadra_trasferta) && (
+                                  <img 
+                                    src={getStemmaSquadra(partita.squadra_trasferta)} 
+                                    alt={partita.squadra_trasferta}
+                                    className="w-8 h-8 object-contain"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                )}
+                              </div>
                             </div>
-                            <h3 className="font-bold text-gray-800">{p.partita}</h3>
-                            <div className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">Pronostico:</span> {p.pronostico} | 
-                              <span className="font-medium"> Quota:</span> {p.quota} |
-                              <span className="font-medium"> Puntata:</span> €{p.importo_puntata?.toFixed(2) || '0.00'}
-                            </div>
-                            {p.stato === 'win' && (
-                              <div className="text-sm font-bold text-green-600 mt-1">
-                                Vincita: €{(p.quota * p.importo_puntata).toFixed(2)} (+€{p.guadagno_netto?.toFixed(2)})
+                            {vistaCorrente === 'tutti' && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                <span>📅 {formattaData(partita.data_partita)}</span>
+                                {partita.orario && <span>🕐 {partita.orario.slice(0, 5)}</span>}
+                              </div>
+                            )}
+                            {vistaCorrente === 'giorno' && partita.orario && (
+                              <div className="text-sm text-gray-600 mt-1">
+                                🕐 {partita.orario.slice(0, 5)}
                               </div>
                             )}
                           </div>
+                          {isAdmin && (
+                            <button
+                              onClick={() => eliminaPartita(partita.id)}
+                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-medium ml-3"
+                              title="Elimina partita"
+                            >
+                              🗑️ Elimina
+                            </button>
+                          )}
                         </div>
 
-                        {isAdmin && p.stato === 'pending' && (
-                          <div className="flex gap-2 mt-3">
-                            <button
-                              onClick={() => aggiornaStatoSingolo(p.id, 'win')}
-                              className="px-4 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                            >
-                              Vinto
-                            </button>
-                            <button
-                              onClick={() => aggiornaStatoSingolo(p.id, 'loss')}
-                              className="px-4 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                            >
-                              Perso
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========== SEZIONE MULTIPLE ========== */}
-        {sezioneAttiva === 'multiple' && (
-          <div className="space-y-6">
-            {/* Statistiche Multiple */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Statistiche Multiple</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-purple-50 p-4 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-purple-600">{statistiche.multiple.totali}</div>
-                  <div className="text-sm text-gray-600">Totali</div>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-green-600">{statistiche.multiple.vinte}</div>
-                  <div className="text-sm text-gray-600">Vinte</div>
-                </div>
-                <div className="bg-red-50 p-4 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-red-600">{statistiche.multiple.perse}</div>
-                  <div className="text-sm text-gray-600">Perse</div>
-                </div>
-                <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-yellow-600">{statistiche.multiple.pending}</div>
-                  <div className="text-sm text-gray-600">Pending</div>
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-sm text-gray-600">Speso</div>
-                  <div className="text-2xl font-bold text-red-600">€{statistiche.multiple.speso.toFixed(2)}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-gray-600">Incassato</div>
-                  <div className="text-2xl font-bold text-green-600">€{statistiche.multiple.incassato.toFixed(2)}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-gray-600">Bilancio</div>
-                  <div className={`text-2xl font-bold ${statistiche.multiple.incassato - statistiche.multiple.speso >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    €{(statistiche.multiple.incassato - statistiche.multiple.speso).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Lista Multiple */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">🎰 Le Mie Multiple</h2>
-              {multiple.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="text-4xl mb-3">🎰</div>
-                  <p>Nessuna multipla creata</p>
-                  <button
-                    onClick={() => setSezioneAttiva('crea-multipla')}
-                    className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
-                  >
-                    ➕ Crea la tua prima multipla
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {multiple.map((m) => (
-                    <div key={m.id} className="border-2 border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-gray-800">{m.nome}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              m.stato === 'win' ? 'bg-green-100 text-green-800' :
-                              m.stato === 'loss' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {m.stato === 'win' ? '✓ VINTA' : m.stato === 'loss' ? '✗ PERSA' : '⏳ IN CORSO'}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-600">Quota Totale:</span>
-                              <div className="text-lg font-bold text-purple-600">{m.quota_totale}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Puntata:</span>
-                              <div className="text-lg font-bold text-blue-600">€{m.importo_puntata?.toFixed(2)}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Vincita Potenziale:</span>
-                              <div className="text-lg font-bold text-green-600">€{m.guadagno_potenziale?.toFixed(2)}</div>
-                            </div>
-                          </div>
-                        </div>
+                        {/* Pulsanti veloci per pronostici - Solo Admin */}
                         {isAdmin && (
-                          <button
-                            onClick={() => eliminaMultipla(m.id)}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                          >
-                            🗑️
-                          </button>
+                          <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">⚡ Aggiungi Pronostico Veloce:</p>
+                            <div className="grid grid-cols-5 gap-2">
+                              {partita.quota_1 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '1')} className="px-2 py-1 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600">
+                                  1<br/>{partita.quota_1}
+                                </button>
+                              )}
+                              {partita.quota_x && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'X')} className="px-2 py-1 bg-gray-500 text-white rounded text-xs font-semibold hover:bg-gray-600">
+                                  X<br/>{partita.quota_x}
+                                </button>
+                              )}
+                              {partita.quota_2 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '2')} className="px-2 py-1 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600">
+                                  2<br/>{partita.quota_2}
+                                </button>
+                              )}
+                              {partita.quota_gol && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'GOL')} className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600">
+                                  GOL<br/>{partita.quota_gol}
+                                </button>
+                              )}
+                              {partita.quota_nogol && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'NOGOL')} className="px-2 py-1 bg-purple-500 text-white rounded text-xs font-semibold hover:bg-purple-600">
+                                  NG<br/>{partita.quota_nogol}
+                                </button>
+                              )}
+                              {partita.quota_over_25 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'OVER25')} className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-semibold hover:bg-orange-600">
+                                  O2.5<br/>{partita.quota_over_25}
+                                </button>
+                              )}
+                              {partita.quota_under_25 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'UNDER25')} className="px-2 py-1 bg-indigo-500 text-white rounded text-xs font-semibold hover:bg-indigo-600">
+                                  U2.5<br/>{partita.quota_under_25}
+                                </button>
+                              )}
+                              {partita.quota_1x && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '1X')} className="px-2 py-1 bg-teal-500 text-white rounded text-xs font-semibold hover:bg-teal-600">
+                                  1X<br/>{partita.quota_1x}
+                                </button>
+                              )}
+                              {partita.quota_12 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, '12')} className="px-2 py-1 bg-pink-500 text-white rounded text-xs font-semibold hover:bg-pink-600">
+                                  12<br/>{partita.quota_12}
+                                </button>
+                              )}
+                              {partita.quota_x2 && (
+                                <button onClick={() => aggiungiPronosticoVeloce(partita.id, 'X2')} className="px-2 py-1 bg-yellow-500 text-white rounded text-xs font-semibold hover:bg-yellow-600">
+                                  X2<br/>{partita.quota_x2}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </div>
 
-                      {/* Pronostici della multipla */}
-                      <div className="border-t pt-3 mt-3">
-                        <h4 className="font-semibold text-gray-700 mb-2">Pronostici ({m.pronostici?.length || 0}):</h4>
-                        <div className="space-y-2">
-                          {m.pronostici?.map((p, idx) => (
-                            <div key={idx} className="bg-gray-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <div className="flex-1">
-                                  <div className="font-semibold text-gray-800">{p.partita_nome}</div>
-                                  <div className="text-sm text-gray-600">
-                                    {formattaData(p.data_partita)} | {p.campionato}
+                        {/* Suggerimenti utenti */}
+                        <div className="border-t pt-3">
+                          <button 
+                            onClick={() => setMostraSuggerimenti(prev => ({ ...prev, [partita.id]: !prev[partita.id] }))} 
+                            className="text-sm text-blue-600 hover:underline mb-2"
+                          >
+                            {mostraSuggerimenti[partita.id] ? '▼' : '▶'} Suggerimenti ({suggerimentiPartite[partita.id]?.length || 0})
+                          </button>
+                          
+                          {mostraSuggerimenti[partita.id] && (
+                            <div className="mt-3 space-y-3">
+                              {suggerimentiPartite[partita.id]?.map((s) => (
+                                <div key={s.id} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-800">💡 {s.nome_utente}</span>
+                                    <span className="text-xs text-gray-500">{new Date(s.created_at).toLocaleString('it-IT')}</span>
                                   </div>
+                                  <p className="text-gray-700 text-sm font-medium">{s.suggerimento}</p>
                                 </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-purple-600">{p.pronostico}</div>
-                                  <div className="text-sm text-gray-600">Quota: {p.quota}</div>
+                              ))}
+                              
+                              <div className="mt-3">
+                                <input
+                                  type="text"
+                                  value={nomeUtente}
+                                  onChange={(e) => setNomeUtente(e.target.value)}
+                                  placeholder="Il tuo nome"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={nuovoSuggerimento[partita.id] || ''}
+                                    onChange={(e) => setNuovoSuggerimento(prev => ({ ...prev, [partita.id]: e.target.value }))}
+                                    placeholder="Suggerisci un pronostico (es: 1X quota 1.50)..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <button onClick={() => aggiungiSuggerimento(partita.id)} className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-semibold">
+                                    💡 Suggerisci
+                                  </button>
                                 </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Azioni Admin */}
-                      {isAdmin && m.stato === 'pending' && (
-                        <div className="flex gap-2 mt-4 pt-4 border-t">
-                          <button
-                            onClick={() => aggiornaStatoMultipla(m.id, 'win')}
-                            className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
-                          >
-                            ✓ VINTA
-                          </button>
-                          <button
-                            onClick={() => aggiornaStatoMultipla(m.id, 'loss')}
-                            className="flex-1 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
-                          >
-                            ✗ PERSA
-                          </button>
-                        </div>
-                      )}
-
-                      {m.stato === 'win' && (
-                        <div className="mt-4 pt-4 border-t bg-green-50 p-3 rounded-lg">
-                          <div className="text-center">
-                            <div className="text-sm text-gray-600">Hai vinto</div>
-                            <div className="text-3xl font-bold text-green-600">€{m.guadagno_potenziale?.toFixed(2)}</div>
-                            <div className="text-sm text-green-700">+€{m.guadagno_netto?.toFixed(2)} di guadagno netto</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========== SEZIONE CREA MULTIPLA ========== */}
-        {sezioneAttiva === 'crea-multipla' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sidebar - Riepilogo Multipla */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-lg p-6 sticky top-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">📋 Riepilogo Multipla</h3>
-                
-                <div className="space-y-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome Multipla</label>
-                    <input
-                      type="text"
-                      value={nuovaMultipla.nome}
-                      onChange={(e) => setNuovaMultipla({...nuovaMultipla, nome: e.target.value})}
-                      placeholder="es. Multipla Weekend"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Importo Puntata (€)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={nuovaMultipla.importo}
-                      onChange={(e) => setNuovaMultipla({...nuovaMultipla, importo: e.target.value})}
-                      placeholder="10.00"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      Saldo disponibile: €{budget?.saldo_attuale?.toFixed(2) || '0.00'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pronostici Selezionati */}
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-700 mb-2">
-                    Pronostici Selezionati ({nuovaMultipla.pronostici.length})
-                  </h4>
-                  {nuovaMultipla.pronostici.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      Nessun pronostico selezionato
-                    </p>
-                  ) : (
-                    <div className="space-y-2 mb-4">
-                      {nuovaMultipla.pronostici.map((p, idx) => (
-                        <div key={idx} className="bg-purple-50 p-3 rounded-lg relative">
-                          <button
-                            onClick={() => rimuoviPronosticoDaMultipla(idx)}
-                            className="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold"
-                          >
-                            ✕
-                          </button>
-                          <div className="pr-6">
-                            <div className="text-sm font-semibold text-gray-800">{p.partita_nome}</div>
-                            <div className="text-xs text-gray-600">{formattaData(p.data_partita)}</div>
-                            <div className="flex justify-between items-center mt-1">
-                              <span className="text-xs font-medium text-purple-600">{p.pronostico}</span>
-                              <span className="text-sm font-bold text-purple-700">{p.quota}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Calcoli */}
-                {nuovaMultipla.pronostici.length > 0 && (
-                  <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">Quota Totale:</span>
-                      <span className="text-xl font-bold text-purple-600">{calcolaQuotaTotale()}</span>
-                    </div>
-                    {nuovaMultipla.importo && (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-gray-700">Vincita Potenziale:</span>
-                          <span className="text-xl font-bold text-green-600">€{calcolaGuadagnoPotenziale()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Guadagno Netto:</span>
-                          <span className="font-bold text-green-600">
-                            +€{(parseFloat(calcolaGuadagnoPotenziale()) - parseFloat(nuovaMultipla.importo || 0)).toFixed(2)}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Pulsante Salva */}
-                <button
-                  onClick={salvaMultipla}
-                  disabled={nuovaMultipla.pronostici.length < 2 || !nuovaMultipla.nome || !nuovaMultipla.importo}
-                  className="w-full mt-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  💾 Salva Multipla
-                </button>
-              </div>
-            </div>
-
-            {/* Contenuto Principale - Selezione Partite */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">⚽ Seleziona Partite</h2>
-
-                {/* Filtri */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campionato</label>
-                    <select
-                      value={filtriMultipla.campionato}
-                      onChange={(e) => setFiltriMultipla({...filtriMultipla, campionato: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="tutti">Tutti i campionati</option>
-                      {CAMPIONATI.map(c => (
-                        <option key={c.id} value={c.id}>{c.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Inizio</label>
-                    <input
-                      type="date"
-                      value={filtriMultipla.dataInizio}
-                      onChange={(e) => setFiltriMultipla({...filtriMultipla, dataInizio: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Fine</label>
-                    <input
-                      type="date"
-                      value={filtriMultipla.dataFine}
-                      onChange={(e) => setFiltriMultipla({...filtriMultipla, dataFine: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Partite */}
-                <div className="space-y-4">
-                  {partiteFiltrate.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <div className="text-4xl mb-3">⚽</div>
-                      <p>Nessuna partita trovata con questi filtri</p>
-                    </div>
-                  ) : (
-                    partiteFiltrate.map((partita) => (
-                      <div key={partita.id} className="border border-gray-200 rounded-lg p-4 hover:border-purple-400 transition">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getStemmaSquadra(partita.squadra_casa) && (
-                                <img src={getStemmaSquadra(partita.squadra_casa)} alt="" className="w-6 h-6" />
-                              )}
-                              <span className="font-bold">{partita.squadra_casa}</span>
-                              <span className="text-gray-500">vs</span>
-                              <span className="font-bold">{partita.squadra_trasferta}</span>
-                              {getStemmaSquadra(partita.squadra_trasferta) && (
-                                <img src={getStemmaSquadra(partita.squadra_trasferta)} alt="" className="w-6 h-6" />
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {formattaData(partita.data_partita)} {partita.orario && `- ${partita.orario.slice(0, 5)}`} | {partita.campionato}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Quote Selezionabili */}
-                        <div className="grid grid-cols-5 gap-2">
-                          {partita.quota_1 && (
-                            <button
-                              onClick={() => aggiungiPronosticoAMultipla(partita, '1')}
-                              className="py-2 bg-green-100 text-green-800 rounded text-xs font-semibold hover:bg-green-200 border border-green-300"
-                            >
-                              1<br/>{partita.quota_1}
-                            </button>
                           )}
-                          {partita.quota_x && (
-                            <button
-                              onClick={() => aggiungiPronosticoAMultipla(partita, 'X')}
-                              className="py-2 bg-gray-100 text-gray-800 rounded text-xs font-semibold hover:bg-gray-200 border border-gray-300"
-                            >
-                              X<br/>{partita.quota_x}
-                            </button>
-                          )}
-                          {partita.quota_2 && (
-                            <button
-                              onClick={() => aggiungiPronosticoAMultipla(partita, '2')}
-                              className="py-2 bg-red-100 text-red-800 rounded text-xs font-semibold hover:bg-red-200 border border-red-300"
-                            >
-                              2<br/>{partita.quota_2}
-                            </button>
-                          )}
-                          {partita.quota_gol && (
-                            <button
-                              onClick={() => aggiungiPronosticoAMultipla(partita, 'GOL')}
-                              className="py-2 bg-blue-100 text-blue-800 rounded text-xs font-semibold hover:bg-blue-200 border border-blue-300"
-                            >
-                              GOL<br/>{partita.quota_gol}
-                            </button>
-                          )}
-                          {partita.quota_over_25 && (
-                            <button
-                              onClick={() => aggiungiPronosticoAMultipla(partita, 'OVER25')}
-                              className="py-2 bg-orange-100 text-orange-800 rounded text-xs font-semibold hover:bg-orange-200 border border-orange-300"
-                            >
-                              O2.5<br/>{partita.quota_over_25}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========== SEZIONE BUDGET ========== */}
-        {sezioneAttiva === 'budget' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sidebar - Saldo e Azioni */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Saldo Attuale */}
-              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">💰 Saldo Attuale</h3>
-                <div className="text-4xl font-bold text-yellow-700 mb-4">
-                  €{budget?.saldo_attuale?.toFixed(2) || '0.00'}
-                </div>
-                <div className="text-sm text-gray-600">
-                  Saldo iniziale: €{budget?.saldo_iniziale?.toFixed(2) || '0.00'}
-                </div>
-              </div>
-
-              {/* Azioni Budget */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">➕ Gestisci Saldo</h3>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      const importo = prompt('Importo deposito (€):');
-                      if (importo && parseFloat(importo) > 0) {
-                        aggiungiMovimento('deposito', parseFloat(importo), 'Deposito');
-                      }
-                    }}
-                    className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
-                  >
-                    💵 Deposita
-                  </button>
-                  <button
-                    onClick={() => {
-                      const importo = prompt('Importo prelievo (€):');
-                      if (importo && parseFloat(importo) > 0 && parseFloat(importo) <= budget.saldo_attuale) {
-                        aggiungiMovimento('prelievo', parseFloat(importo), 'Prelievo');
-                      } else if (importo) {
-                        alert('Importo non valido o saldo insufficiente!');
-                      }
-                    }}
-                    className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
-                  >
-                    💸 Preleva
-                  </button>
-                </div>
-              </div>
-
-              {/* Riepilogo Totale */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Riepilogo Totale</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Singole Spese:</span>
-                    <span className="font-bold text-red-600">€{statistiche.singole.speso.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Singole Incassate:</span>
-                    <span className="font-bold text-green-600">€{statistiche.singole.incassato.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Multiple Spese:</span>
-                    <span className="font-bold text-red-600">€{statistiche.multiple.speso.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Multiple Incassate:</span>
-                    <span className="font-bold text-green-600">€{statistiche.multiple.incassato.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 text-lg">
-                    <span className="font-bold">Bilancio Totale:</span>
-                    <span className={`font-bold ${
-                      (statistiche.singole.incassato + statistiche.multiple.incassato) - 
-                      (statistiche.singole.speso + statistiche.multiple.speso) >= 0 
-                      ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      €{((statistiche.singole.incassato + statistiche.multiple.incassato) - 
-                         (statistiche.singole.speso + statistiche.multiple.speso)).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Storico Movimenti */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">📜 Storico Movimenti</h2>
-                {movimenti.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <div className="text-4xl mb-3">📜</div>
-                    <p>Nessun movimento registrato</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {movimenti.map((m) => (
-                      <div key={m.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-2xl ${
-                              m.tipo === 'deposito' ? '💵' :
-                              m.tipo === 'prelievo' ? '💸' :
-                              m.tipo === 'vincita' ? '🎉' :
-                              m.tipo === 'puntata' ? '🎲' : '↩️'
-                            }`}>
-                              {m.tipo === 'deposito' ? '💵' :
-                               m.tipo === 'prelievo' ? '💸' :
-                               m.tipo === 'vincita' ? '🎉' :
-                               m.tipo === 'puntata' ? '🎲' : '↩️'}
-                            </span>
-                            <div>
-                              <div className="font-semibold text-gray-800 capitalize">{m.tipo}</div>
-                              <div className="text-sm text-gray-600">{m.descrizione}</div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(m.created_at).toLocaleString('it-IT')}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className={`text-xl font-bold ${
-                          m.tipo === 'deposito' || m.tipo === 'vincita' || m.tipo === 'rimborso' 
-                          ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {m.tipo === 'deposito' || m.tipo === 'vincita' || m.tipo === 'rimborso' ? '+' : '-'}
-                          €{m.importo?.toFixed(2)}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
