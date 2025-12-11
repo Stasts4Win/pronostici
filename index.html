@@ -366,105 +366,6 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25
     }
   }
 
-  async function importaDaAPI() {
-    if (!API_FOOTBALL_KEY) {
-      alert('⚠️ API Key non configurata! Inserisci la tua API Key di API-Football nel codice.');
-      return;
-    }
-
-    const campionato = CAMPIONATI.find(c => c.id === campionatoSelezionato);
-    if (!campionato?.apiLeagueId) {
-      alert('⚠️ Questo campionato non supporta l\'importazione automatica.');
-      return;
-    }
-
-    try {
-      setLoadingAPI(true);
-      
-      // Calcola intervallo date (oggi + X giorni) - NON specificare season
-      const oggi = new Date();
-      const dataInizio = oggi.toISOString().split('T')[0];
-      const dataFine = new Date(oggi);
-      dataFine.setDate(dataFine.getDate() + numeroGiorniAPI);
-      const dataFineStr = dataFine.toISOString().split('T')[0];
-      
-      // NON include season - prende automaticamente quella corrente
-      const url = `https://v3.football.api-sports.io/fixtures?league=${campionato.apiLeagueId}&from=${dataInizio}&to=${dataFineStr}`;
-
-      console.log('URL API:', url);
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'x-apisports-key': API_FOOTBALL_KEY
-        }
-      });
-
-      const data = await response.json();
-      
-      console.log('Risposta API:', data);
-      
-      if (data.errors && Object.keys(data.errors).length > 0) {
-        alert('❌ Errore API: ' + JSON.stringify(data.errors));
-        setLoadingAPI(false);
-        return;
-      }
-      
-      if (!data.response || data.response.length === 0) {
-        alert(`ℹ️ Nessuna partita trovata per ${campionato.nome} dal ${dataInizio} al ${dataFineStr}.\n\nProva con:\n- Un periodo più lungo\n- Un altro campionato`);
-        setLoadingAPI(false);
-        return;
-      }
-
-      const batchTimestamp = new Date().toISOString();
-      const partite = [];
-
-      for (const match of data.response) {
-        const dataPartita = match.fixture.date.split('T')[0];
-        
-        partite.push({
-          squadra_casa: match.teams.home.name,
-          squadra_trasferta: match.teams.away.name,
-          campionato: campionatoSelezionato,
-          data_partita: dataPartita,
-          quota_1: null,
-          quota_x: null,
-          quota_2: null,
-          quota_nogol: null,
-          quota_gol: null,
-          quota_under_15: null,
-          quota_over_15: null,
-          quota_under_25: null,
-          quota_over_25: null,
-          quota_under_35: null,
-          quota_over_35: null,
-          quota_1x: null,
-          quota_12: null,
-          quota_x2: null,
-          user_id: user.id,
-          batch_importazione: batchTimestamp
-        });
-      }
-
-      if (partite.length === 0) {
-        alert('Nessuna partita da importare.');
-        setLoadingAPI(false);
-        return;
-      }
-
-      const { error } = await supabase.from('partite').insert(partite);
-      if (error) throw error;
-
-      alert(`✅ ${partite.length} partite importate dall'API!\n\nOra puoi aggiungere le quote manualmente.`);
-      caricaPartite();
-    } catch (error) {
-      console.error('Errore completo:', error);
-      alert('Errore importazione API: ' + error.message);
-    } finally {
-      setLoadingAPI(false);
-    }
-  }
-
   async function caricaCommenti(pronosticoId) {
     try {
       const { data, error } = await supabase
@@ -1200,9 +1101,37 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25
                             <span className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${p.stato === 'win' ? 'bg-green-100 text-green-800' : p.stato === 'loss' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
                               {p.stato === 'win' ? '✓ Vinto' : p.stato === 'loss' ? '✗ Perso' : '⏳'}
                             </span>
-                            {vistaCorrente === 'tutti' && (
-                              <span className="text-xs bg-gray-100 px-2 py-1 rounded whitespace-nowrap">{formattaData(p.data_partita)}</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                // Cerca prima per ID, poi per nome partita
+                                let partitaCollegata = partiteDisponibili.find(pt => pt.id === p.partita_id);
+                                
+                                if (!partitaCollegata) {
+                                  // Cerca per nome se non trova per ID
+                                  const parti = p.partita.split(' vs ');
+                                  if (parti.length === 2) {
+                                    const casaCercata = parti[0].trim().toLowerCase();
+                                    const trasfertaCercata = parti[1].trim().toLowerCase();
+                                    partitaCollegata = partiteDisponibili.find(pt => {
+                                      const casaDB = pt.squadra_casa.toLowerCase();
+                                      const trasfertaDB = pt.squadra_trasferta.toLowerCase();
+                                      const matchCasa = casaDB.includes(casaCercata) || casaCercata.includes(casaDB);
+                                      const matchTrasferta = trasfertaDB.includes(trasfertaCercata) || trasfertaCercata.includes(trasfertaDB);
+                                      return matchCasa && matchTrasferta && pt.data_partita === p.data_partita;
+                                    });
+                                  }
+                                }
+                                
+                                return partitaCollegata?.orario ? (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded whitespace-nowrap">
+                                    🕐 {partitaCollegata.orario.slice(0, 5)}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {vistaCorrente === 'tutti' && (
+                                <span className="text-xs bg-gray-100 px-2 py-1 rounded whitespace-nowrap">{formattaData(p.data_partita)}</span>
+                              )}
+                            </div>
                           </div>
                           
                           {(() => {
@@ -1345,7 +1274,7 @@ Brescia\tCosenza\tserie-b\t16/12/2024\t15:00\t1,95\t3,20\t3,80\t2,50\t1,50\t1,25
                             )}
                             {vistaCorrente === 'giorno' && partita.orario && (
                               <div className="text-sm text-gray-600 mt-1">
-                                🕐 {partita.orario}
+                                🕐 {partita.orario.slice(0, 5)}
                               </div>
                             )}
                           </div>
