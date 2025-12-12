@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pronostici Completo - Singole, Multiple & Budget</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --color-primary: #3b82f6;
+    --color-success: #10b981;
+    --color-danger: #ef4444;
+    --color-warning: #f59e0b;
+    --color-dark: #1f2937;
+    --color-light: #f9fafb;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-light);
+    color: var(--color-dark);
+  }
+
+  .btn-tab {
+    transition: all 0.3s ease;
+  }
+
+  .btn-tab.active {
+    border-bottom: 3px solid var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .card-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .quota-badge {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .status-pending {
+    background: var(--color-warning);
+  }
+
+  .status-vinta {
+    background: var(--color-success);
+  }
+
+  .status-persa {
+    background: var(--color-danger);
+  }
+
+  input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+  }
+
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .match-item {
+    border-left: 4px solid var(--color-primary);
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.375rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .match-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .chart-bar {
+    background: var(--color-primary);
+    border-radius: 0.25rem;
+    transition: width 0.3s ease;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// 🔐 INTEGRAZIONE SUPABASE
+const SUPABASE_URL = 'https://jhquweahxrixlxdolpwc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocXV3ZWFoeHJpeGx4ZG9scHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0NDYxMTksImV4cCI6MjA4MDAyMjExOX0.UGA3_cqQvzXC79gKsceFnmqrCnOy1cjJQ7uEKLE0K3c';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ADMIN_USER_ID = '1b2932fe-9d8e-4518-a8cf-79ae5cf98bcd';
+
+// 🎨 DATABASE STEMMI SQUADRE
+const STEMMI_SQUADRE = {
+  // === SERIE A ===
+  'AC Milan': 'https://media.api-sports.io/football/teams/489.png',
+  'Milan': 'https://media.api-sports.io/football/teams/489.png',
+  'AS Roma': 'https://media.api-sports.io/football/teams/497.png',
+  'Roma': 'https://media.api-sports.io/football/teams/497.png',
+  'Atalanta': 'https://media.api-sports.io/football/teams/499.png',
+  'Bologna': 'https://media.api-sports.io/football/teams/500.png',
+  'Cagliari': 'https://media.api-sports.io/football/teams/490.png',
+  'Fiorentina': 'https://media.api-sports.io/football/teams/502.png',
+  'Genoa': 'https://media.api-sports.io/football/teams/495.png',
+  'Inter': 'https://media.api-sports.io/football/teams/505.png',
+  'Juventus': 'https://static.flashscore.com/res/image/data/CbDOFGyS-EXzXDYgS.png',
+  'Lazio': 'https://media.api-sports.io/football/teams/487.png',
+  'Napoli': 'https://media.api-sports.io/football/teams/492.png',
+  'Sassuolo': 'https://media.api-sports.io/football/teams/488.png',
+  'Torino': 'https://media.api-sports.io/football/teams/503.png',
+  'Udinese': 'https://media.api-sports.io/football/teams/494.png',
+  'Verona': 'https://media.api-sports.io/football/teams/504.png',
+  
+  // === PREMIER LEAGUE ===
+  'Arsenal': 'https://static.flashscore.com/res/image/data/0n1ffK6k-vcNAdtF9.png',
+  'Aston Villa': 'https://static.flashscore.com/res/image/data/UHchCEVH-UTYC4Dd6.png',
+  'Chelsea': 'https://static.flashscore.com/res/image/data/lMxEQ8me-IROrZEJb.png',
+  'Liverpool': 'https://static.flashscore.com/res/image/data/nBClzyne-f97XIGZs.png',
+  'Manchester City': 'https://static.flashscore.com/res/image/data/0vgscFU0-lQuhqN8N.png',
+  'Manchester Utd': 'https://static.flashscore.com/res/image/data/GhGV3qjT-UPrTWfIe.png',
+  'Tottenham': 'https://static.flashscore.com/res/image/data/v3SzDxVH-Ig5FKJZ5.png',
+  
+  // === LA LIGA ===
+  'Real Madrid': 'https://media.api-sports.io/football/teams/541.png',
+  'Barcelona': 'https://media.api-sports.io/football/teams/529.png',
+  'Atletico Madrid': 'https://media.api-sports.io/football/teams/530.png',
+  'Valencia': 'https://media.api-sports.io/football/teams/559.png',
+};
+
+// Funzione per ottenere lo stemma di una squadra
+const getStemmaSquadra = (nomeSquadra) => {
+  if (!nomeSquadra) return null;
+  const nome = nomeSquadra.trim();
+  if (STEMMI_SQUADRE[nome]) return STEMMI_SQUADRE[nome];
+  
+  for (const [key, value] of Object.entries(STEMMI_SQUADRE)) {
+    if (nome.includes(key) || key.includes(nome)) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const { useState, useEffect } = React;
+
+const AppPronostici = () => {
+  const [activeTab, setActiveTab] = useState('singole');
+  const [singole, setSingole] = useState([]);
+  const [multiple, setMultiple] = useState([]);
+  const [budget, setBudget] = useState({
+    saldoIniziale: 1000,
+    saldoAttuale: 1000,
+    movimenti: []
+  });
+  const [caricamento, setCaricamento] = useState(true);
+  const [utenteLesito, setUtenteLesito] = useState(null);
+  const [formMultipla, setFormMultipla] = useState({ nome: '', partite: [], puntata: 0 });
+  const [formSingola, setFormSingola] = useState({ partita: null, tipo: '', quota: 0, puntata: 0 });
+
+  // Partite disponibili da più campionati
+  const PARTITE_DISPONIBILI = [
+    // === SERIE A ===
+    { id: 1, campionato: 'Serie A', data: '2025-12-13', squadra1: 'Milan', squadra2: 'Roma', quota1: 1.85, quotaX: 3.50, quota2: 4.20 },
+    { id: 2, campionato: 'Serie A', data: '2025-12-13', squadra1: 'Inter', squadra2: 'Napoli', quota1: 2.10, quotaX: 3.40, quota2: 3.60 },
+    { id: 3, campionato: 'Serie A', data: '2025-12-14', squadra1: 'Juventus', squadra2: 'Fiorentina', quota1: 1.95, quotaX: 3.30, quota2: 4.00 },
+    { id: 4, campionato: 'Serie A', data: '2025-12-14', squadra1: 'Atalanta', squadra2: 'Bologna', quota1: 1.65, quotaX: 3.80, quota2: 5.50 },
+    { id: 5, campionato: 'Serie A', data: '2025-12-15', squadra1: 'Lazio', squadra2: 'Genoa', quota1: 2.05, quotaX: 3.45, quota2: 3.70 },
+    // === PREMIER LEAGUE ===
+    { id: 10, campionato: 'Premier League', data: '2025-12-13', squadra1: 'Manchester City', squadra2: 'Arsenal', quota1: 2.20, quotaX: 3.60, quota2: 3.20 },
+    { id: 11, campionato: 'Premier League', data: '2025-12-14', squadra1: 'Liverpool', squadra2: 'Chelsea', quota1: 1.95, quotaX: 3.40, quota2: 4.00 },
+    { id: 12, campionato: 'Premier League', data: '2025-12-15', squadra1: 'Manchester United', squadra2: 'Tottenham', quota1: 2.00, quotaX: 3.50, quota2: 3.80 },
+    // === LA LIGA ===
+    { id: 20, campionato: 'La Liga', data: '2025-12-13', squadra1: 'Real Madrid', squadra2: 'Barcelona', quota1: 1.80, quotaX: 3.70, quota2: 4.50 },
+    { id: 21, campionato: 'La Liga', data: '2025-12-14', squadra1: 'Atletico Madrid', squadra2: 'Valencia', quota1: 1.75, quotaX: 3.60, quota2: 5.00 },
+    // === BUNDESLIGA ===
+    { id: 30, campionato: 'Bundesliga', data: '2025-12-13', squadra1: 'Bayern Monaco', squadra2: 'Borussia Dortmund', quota1: 1.65, quotaX: 4.00, quota2: 5.50 },
+  ];
+
+  // Carica dati da Supabase
+  useEffect(() => {
+    caricaDati();
+  }, []);
+
+  const caricaDati = async () => {
+    try {
+      setCaricamento(true);
+      
+      // Carica budget
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budget')
+        .select('*')
+        .eq('user_id', ADMIN_USER_ID)
+        .single();
+
+      if (!budgetError && budgetData) {
+        setBudget({
+          saldoIniziale: budgetData.saldo_iniziale,
+          saldoAttuale: budgetData.saldo_attuale,
+          movimenti: []
+        });
+      }
+
+      // Carica movimenti
+      const { data: movimentiData } = await supabase
+        .from('movimenti')
+        .select('*')
+        .eq('user_id', ADMIN_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (movimentiData) {
+        setBudget(prev => ({
+          ...prev,
+          movimenti: movimentiData.map(m => ({
+            id: m.id,
+            tipo: m.tipo,
+            descrizione: m.descrizione,
+            importo: m.importo,
+            data: m.created_at
+          }))
+        }));
+      }
+
+      // Carica singole (pronostici)
+      const { data: singoleData } = await supabase
+        .from('pronostici')
+        .select('*, partite(squadra1, squadra2, campionato, data)')
+        .eq('user_id', ADMIN_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (singoleData) {
+        setSingole(singoleData.map(s => ({
+          id: s.id,
+          partita: {
+            id: s.partita_id,
+            squadra1: s.partite?.squadra1 || s.partita_nome?.split(' vs ')[0],
+            squadra2: s.partite?.squadra2 || s.partita_nome?.split(' vs ')[1],
+            campionato: s.campionato,
+            data: s.data_partita
+          },
+          tipo: s.pronostico,
+          quota: s.quota,
+          puntata: s.importo_puntata,
+          guadagnoMax: s.guadagno_netto,
+          stato: s.stato,
+          dataPartita: s.data_partita
+        })));
+      }
+
+      // Carica multiple con pronostici collegati
+      const { data: multipleData } = await supabase
+        .from('multiple')
+        .select(`
+          *,
+          pronostici_multiple(
+            id,
+            pronostico,
+            quota,
+            partita_nome,
+            campionato,
+            data_partita,
+            stato
+          )
+        `)
+        .eq('user_id', ADMIN_USER_ID)
+        .order('created_at', { ascending: false });
+
+      if (multipleData) {
+        setMultiple(multipleData.map(m => ({
+          id: m.id,
+          nome: m.nome,
+          partite: m.pronostici_multiple.map(p => ({
+            partita: {
+              squadra1: p.partita_nome?.split(' vs ')[0],
+              squadra2: p.partita_nome?.split(' vs ')[1],
+              campionato: p.campionato,
+              data: p.data_partita
+            },
+            tipo: p.pronostico,
+            quota: p.quota
+          })),
+          quotaTotale: m.quota_totale,
+          puntata: m.importo_puntata,
+          guadagnoMax: m.guadagno_potenziale,
+          stato: m.stato,
+          dataPartita: m.created_at
+        })));
+      }
+
+      setCaricamento(false);
+    } catch (error) {
+      console.error('Errore caricamento dati:', error);
+      setCaricamento(false);
+    }
+  };
+
+  // Salva nel Supabase
+  const salvaStato = async (newSingole, newMultiple, newBudget) => {
+    try {
+      // Aggiorna budget
+      if (newBudget) {
+        await supabase
+          .from('budget')
+          .update({
+            saldo_iniziale: newBudget.saldoIniziale,
+            saldo_attuale: newBudget.saldoAttuale
+          })
+          .eq('user_id', ADMIN_USER_ID);
+      }
+    } catch (error) {
+      console.error('Errore salvataggio:', error);
+    }
+  };
+
+  // Salva movimento nel Supabase
+  const salvaMovimento = async (tipo, importo, descrizione) => {
+    try {
+      await supabase
+        .from('movimenti')
+        .insert([{
+          user_id: ADMIN_USER_ID,
+          tipo,
+          importo,
+          descrizione
+        }]);
+      caricaDati(); // Ricarica i dati
+    } catch (error) {
+      console.error('Errore movimento:', error);
+    }
+  };
+
+  // === SINGOLE ===
+  const aggiungiSingola = async (partita, tipo, quota, puntata) => {
+    if (puntata <= 0) {
+      alert('La puntata deve essere maggiore di 0');
+      return;
+    }
+
+    if (puntata > budget.saldoAttuale) {
+      alert('Fondi insufficienti!');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('pronostici')
+        .insert([{
+          user_id: ADMIN_USER_ID,
+          partita_id: partita.id,
+          pronostico: tipo,
+          quota,
+          importo_puntata: puntata,
+          guadagno_netto: puntata * quota - puntata,
+          campionato: partita.campionato,
+          data_partita: partita.data,
+          partita_nome: `${partita.squadra1} vs ${partita.squadra2}`,
+          stato: 'pending'
+        }])
+        .select();
+
+      if (!error && data) {
+        await salvaMovimento('puntata', -puntata, `Singola: ${partita.squadra1} vs ${partita.squadra2}`);
+
+        const newBudget = {
+          ...budget,
+          saldoAttuale: budget.saldoAttuale - puntata
+        };
+        
+        await supabase
+          .from('budget')
+          .update({ saldo_attuale: newBudget.saldoAttuale })
+          .eq('user_id', ADMIN_USER_ID);
+
+        setFormSingola({ partita: null, tipo: '', quota: 0, puntata: 0 });
+        caricaDati();
+      }
+    } catch (error) {
+      console.error('Errore aggiunta singola:', error);
+      alert('Errore aggiunta singola');
+    }
+  };
+
+  const vincitaSingola = async (id, quota, puntata) => {
+    try {
+      const guadagno = puntata * quota;
+      
+      // Aggiorna stato
+      await supabase
+        .from('pronostici')
+        .update({ stato: 'vinta' })
+        .eq('id', id);
+
+      // Aggiungi movimento
+      await salvaMovimento('vincita', guadagno, 'Singola vinta');
+
+      // Aggiorna budget
+      const newBudget = {
+        ...budget,
+        saldoAttuale: budget.saldoAttuale + guadagno
+      };
+      
+      await supabase
+        .from('budget')
+        .update({ saldo_attuale: newBudget.saldoAttuale })
+        .eq('user_id', ADMIN_USER_ID);
+
+      caricaDati();
+    } catch (error) {
+      console.error('Errore vincita singola:', error);
+      alert('Errore marcatura vincita');
+    }
+  };
+
+  const perditaSingola = async (id) => {
+    try {
+      await supabase
+        .from('pronostici')
+        .update({ stato: 'persa' })
+        .eq('id', id);
+
+      caricaDati();
+    } catch (error) {
+      console.error('Errore perdita singola:', error);
+      alert('Errore marcatura perdita');
+    }
+  };
+
+  const eliminaSingola = async (id) => {
+    const singola = singole.find(s => s.id === id);
+    if (singola && singola.stato === 'pending') {
+      try {
+        // Elimina pronostico
+        await supabase
+          .from('pronostici')
+          .delete()
+          .eq('id', id);
+
+        // Rimborsa puntata
+        await salvaMovimento('rimborso', singola.puntata, 'Singola eliminata');
+
+        // Aggiorna budget
+        const newBudget = {
+          ...budget,
+          saldoAttuale: budget.saldoAttuale + singola.puntata
+        };
+        
+        await supabase
+          .from('budget')
+          .update({ saldo_attuale: newBudget.saldoAttuale })
+          .eq('user_id', ADMIN_USER_ID);
+
+        caricaDati();
+      } catch (error) {
+        console.error('Errore eliminazione singola:', error);
+        alert('Errore eliminazione singola');
+      }
+    }
+  };
+
+  // === MULTIPLE ===
+  const aggiungiPartiteMultipla = (partita, tipo, quota) => {
+    if (formMultipla.partite.some(p => p.partita.id === partita.id)) {
+      alert('Partita già aggiunta!');
+      return;
+    }
+    const newPartite = [...formMultipla.partite, { partita, tipo, quota }];
+    setFormMultipla({ ...formMultipla, partite: newPartite });
+  };
+
+  const rimuoviPartiteMultipla = (index) => {
+    const newPartite = formMultipla.partite.filter((_, i) => i !== index);
+    setFormMultipla({ ...formMultipla, partite: newPartite });
+  };
+
+  const creaMultipla = async () => {
+    if (!formMultipla.nome.trim()) {
+      alert('Inserisci il nome della multipla');
+      return;
+    }
+    if (formMultipla.partite.length < 2) {
+      alert('Aggiungi almeno 2 partite');
+      return;
+    }
+    if (formMultipla.puntata <= 0) {
+      alert('Puntata deve essere > 0');
+      return;
+    }
+    if (formMultipla.puntata > budget.saldoAttuale) {
+      alert('Fondi insufficienti!');
+      return;
+    }
+
+    try {
+      const quotaTotale = formMultipla.partite.reduce((acc, p) => acc * p.quota, 1);
+      const guadagnoMax = formMultipla.puntata * quotaTotale - formMultipla.puntata;
+
+      const { data: multiplaData, error: multiplaError } = await supabase
+        .from('multiple')
+        .insert([{
+          user_id: ADMIN_USER_ID,
+          nome: formMultipla.nome,
+          quota_totale: quotaTotale,
+          importo_puntata: formMultipla.puntata,
+          guadagno_potenziale: guadagnoMax,
+          stato: 'pending'
+        }])
+        .select();
+
+      if (!multiplaError && multiplaData) {
+        const multiplaId = multiplaData[0].id;
+        const pronosticiMultipla = formMultipla.partite.map(p => ({
+          multipla_id: multiplaId,
+          partita_id: p.partita.id,
+          pronostico: p.tipo,
+          quota: p.quota,
+          partita_nome: `${p.partita.squadra1} vs ${p.partita.squadra2}`,
+          campionato: p.partita.campionato,
+          data_partita: p.partita.data,
+          stato: 'pending'
+        }));
+
+        await supabase.from('pronostici_multiple').insert(pronosticiMultipla);
+        await salvaMovimento('puntata', -formMultipla.puntata, `Multipla: ${formMultipla.nome}`);
+
+        const newBudget = { ...budget, saldoAttuale: budget.saldoAttuale - formMultipla.puntata };
+        await supabase.from('budget').update({ saldo_attuale: newBudget.saldoAttuale }).eq('user_id', ADMIN_USER_ID);
+
+        setFormMultipla({ nome: '', partite: [], puntata: 0 });
+        caricaDati();
+      }
+    } catch (error) {
+      console.error('Errore creazione multipla:', error);
+      alert('Errore creazione multipla');
+    }
+  };
+
+  const vincitaMultipla = async (id, quotaTotale, puntata) => {
+    try {
+      const guadagno = puntata * quotaTotale;
+      
+      await supabase.from('multiple').update({ stato: 'vinta', guadagno_netto: guadagno }).eq('id', id);
+      await supabase.from('pronostici_multiple').update({ stato: 'vinta' }).eq('multipla_id', id);
+      await salvaMovimento('vincita', guadagno, 'Multipla vinta');
+
+      const newBudget = { ...budget, saldoAttuale: budget.saldoAttuale + guadagno };
+      await supabase.from('budget').update({ saldo_attuale: newBudget.saldoAttuale }).eq('user_id', ADMIN_USER_ID);
+
+      caricaDati();
+    } catch (error) {
+      console.error('Errore vincita multipla:', error);
+      alert('Errore marcatura vincita');
+    }
+  };
+
+  const perditaMultipla = async (id) => {
+    try {
+      await supabase.from('multiple').update({ stato: 'persa' }).eq('id', id);
+      await supabase.from('pronostici_multiple').update({ stato: 'persa' }).eq('multipla_id', id);
+      caricaDati();
+    } catch (error) {
+      console.error('Errore perdita multipla:', error);
+      alert('Errore marcatura perdita');
+    }
+  };
+
+  const eliminaMultipla = async (id) => {
+    const multipla = multiple.find(m => m.id === id);
+    if (multipla && multipla.stato === 'pending') {
+      try {
+        await supabase.from('multiple').delete().eq('id', id);
+        await salvaMovimento('rimborso', multipla.puntata, 'Multipla eliminata');
+
+        const newBudget = { ...budget, saldoAttuale: budget.saldoAttuale + multipla.puntata };
+        await supabase.from('budget').update({ saldo_attuale: newBudget.saldoAttuale }).eq('user_id', ADMIN_USER_ID);
+
+        caricaDati();
+      } catch (error) {
+        console.error('Errore eliminazione multipla:', error);
+        alert('Errore eliminazione multipla');
+      }
+    }
+  };
+
+  // === STATISTICHE ===
+  const calcolaStats = (lista) => {
+    const totale = lista.length;
+    const vinte = lista.filter(l => l.stato === 'vinta').length;
+    const perse = lista.filter(l => l.stato === 'persa').length;
+    const pending = lista.filter(l => l.stato === 'pending').length;
+    const percentualeVittoria = totale > 0 ? ((vinte / totale) * 100).toFixed(1) : 0;
+    const totaleStakato = lista.reduce((acc, l) => acc + l.puntata, 0);
+    const totaleGuadagnato = lista.filter(l => l.stato === 'vinta').reduce((acc, l) => acc + (l.puntata * l.quota || l.puntata * l.quotaTotale), 0);
+    const roi = totaleStakato > 0 ? (((totaleGuadagnato - totaleStakato) / totaleStakato) * 100).toFixed(1) : 0;
+
+    return { totale, vinte, perse, pending, percentualeVittoria, totaleStakato, totaleGuadagnato, roi };
+  };
+
+  const statsSingole = calcolaStats(singole);
+  const statsMultiple = calcolaStats(multiple);
+  const statsGlobali = calcolaStats([...singole, ...multiple]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* HEADER */}
+      <div className="bg-white border-b border-gray-200 card-shadow">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">⚽ Pronostici Completo</h1>
+              <p className="text-gray-600 text-sm mt-1">Singole • Multiple • Budget</p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Saldo Attuale</div>
+              <div className="text-3xl font-bold text-blue-600">€{budget.saldoAttuale.toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TABS */}
+      <div className="max-w-6xl mx-auto px-4 mt-6">
+        <div className="flex gap-8 border-b border-gray-200">
+          <button onClick={() => setActiveTab('singole')} className={`btn-tab pb-4 font-semibold transition ${activeTab === 'singole' ? 'active text-blue-600' : 'text-gray-600'}`}>
+            📌 Singole
+          </button>
+          <button onClick={() => setActiveTab('multiple')} className={`btn-tab pb-4 font-semibold transition ${activeTab === 'multiple' ? 'active text-blue-600' : 'text-gray-600'}`}>
+            🎯 Multiple
+          </button>
+          <button onClick={() => setActiveTab('budget')} className={`btn-tab pb-4 font-semibold transition ${activeTab === 'budget' ? 'active text-blue-600' : 'text-gray-600'}`}>
+            💰 Budget & Statistiche
+          </button>
+        </div>
+      </div>
+
+      {/* CARICAMENTO */}
+      {caricamento && (
+        <div className="max-w-6xl mx-auto px-4 py-8 text-center">
+          <div className="text-2xl font-bold text-gray-900">⏳ Caricamento dati...</div>
+        </div>
+      )}
+
+      {/* CONTENUTO */}
+      {!caricamento && (
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* TAB SINGOLE */}
+        {activeTab === 'singole' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Totali</div>
+                <div className="text-2xl font-bold text-gray-900">{statsSingole.totale}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Vinte</div>
+                <div className="text-2xl font-bold text-green-600">{statsSingole.vinte}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Perse</div>
+                <div className="text-2xl font-bold text-red-600">{statsSingole.perse}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Win Rate</div>
+                <div className="text-2xl font-bold text-blue-600">{statsSingole.percentualeVittoria}%</div>
+              </div>
+            </div>
+
+            {/* Form Singola Strutturato */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">📅 Aggiungi Singola</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Seleziona Partita</label>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {Object.entries(
+                      PARTITE_DISPONIBILI.reduce((acc, p) => {
+                        if (!acc[p.data]) acc[p.data] = [];
+                        acc[p.data].push(p);
+                        return acc;
+                      }, {})
+                    ).sort().map(([data, partite]) => (
+                      <div key={data}>
+                        <h4 className="text-xs font-semibold text-gray-600 uppercase mt-3">
+                          📆 {new Date(data).toLocaleDateString('it-IT')}
+                        </h4>
+                        {partite.map(partita => (
+                          <div
+                            key={partita.id}
+                            onClick={() => setFormSingola({ ...formSingola, partita, tipo: '', quota: 0, puntata: 0 })}
+                            className={`p-3 rounded cursor-pointer border-2 transition flex items-center gap-3 ${
+                              formSingola.partita?.id === partita.id
+                                ? 'border-blue-600 bg-blue-50'
+                                : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                            }`}
+                          >
+                            <img src={getStemmaSquadra(partita.squadra1)} alt={partita.squadra1} className="w-8 h-8 object-contain" />
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">
+                                {partita.squadra1} vs {partita.squadra2}
+                              </div>
+                              <div className="text-xs text-gray-600">{partita.campionato}</div>
+                            </div>
+                            <img src={getStemmaSquadra(partita.squadra2)} alt={partita.squadra2} className="w-8 h-8 object-contain" />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {formSingola.partita && (
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-4">
+                    <div className="font-semibold text-gray-900">
+                      {formSingola.partita.squadra1} vs {formSingola.partita.squadra2}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Seleziona Tipo Scommessa</label>
+                      <div className="flex gap-2">
+                        {[
+                          { label: '1', quota: formSingola.partita.quota1, tipo: '1' },
+                          { label: 'X', quota: formSingola.partita.quotaX, tipo: 'X' },
+                          { label: '2', quota: formSingola.partita.quota2, tipo: '2' }
+                        ].map(opzione => (
+                          <button
+                            key={opzione.tipo}
+                            onClick={() => setFormSingola({ ...formSingola, tipo: opzione.tipo, quota: opzione.quota })}
+                            className={`flex-1 py-2 rounded font-semibold transition ${
+                              formSingola.tipo === opzione.tipo
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-blue-600 border-2 border-blue-300 hover:bg-blue-100'
+                            }`}
+                          >
+                            {opzione.label}
+                            <br />
+                            <span className="text-sm">{opzione.quota}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {formSingola.tipo && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Importo Puntata (€)</label>
+                        <input
+                          type="number"
+                          placeholder="Es: 10"
+                          value={formSingola.puntata}
+                          onChange={(e) => setFormSingola({ ...formSingola, puntata: parseFloat(e.target.value) || 0 })}
+                          className="w-full p-3 border border-gray-300 rounded"
+                          min="0"
+                          step="0.01"
+                        />
+                        <div className="mt-2 text-sm text-gray-700">
+                          <div>Guadagno Max: <span className="font-bold text-green-600">€{(formSingola.puntata * formSingola.quota - formSingola.puntata).toFixed(2)}</span></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formSingola.tipo && formSingola.puntata > 0 && (
+                      <button
+                        onClick={() => aggiungiSingola(formSingola.partita, formSingola.tipo, formSingola.quota, formSingola.puntata)}
+                        className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+                      >
+                        ✅ Aggiungi Singola
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setFormSingola({ partita: null, tipo: '', quota: 0, puntata: 0 })}
+                      className="w-full py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Lista Singole */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">📋 Le Mie Singole</h3>
+              <div className="space-y-3">
+                {singole.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Nessuna singola ancora</p>
+                ) : (
+                  singole.map(singola => (
+                    <div key={singola.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3 flex-1">
+                        <img src={getStemmaSquadra(singola.partita.squadra1)} alt={singola.partita.squadra1} className="w-8 h-8 object-contain" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">
+                            {singola.partita.squadra1} vs {singola.partita.squadra2}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            Scommessa su <span className="font-semibold text-blue-600">{singola.tipo}</span> • Quota: <span className="quota-badge">{singola.quota}</span> • Puntata: €{singola.puntata.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Guadagno max: €{singola.guadagnoMax.toFixed(2)}</div>
+                        </div>
+                        <img src={getStemmaSquadra(singola.partita.squadra2)} alt={singola.partita.squadra2} className="w-8 h-8 object-contain" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className={`quota-badge ${singola.stato === 'pending' ? 'status-pending' : singola.stato === 'vinta' ? 'status-vinta' : 'status-persa'}`}>
+                          {singola.stato.toUpperCase()}
+                        </div>
+                        {singola.stato === 'pending' && (
+                          <>
+                            <button onClick={() => vincitaSingola(singola.id, singola.quota, singola.puntata)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 font-semibold text-sm">
+                              ✓ Vinta
+                            </button>
+                            <button onClick={() => perditaSingola(singola.id)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 font-semibold text-sm">
+                              ✗ Persa
+                            </button>
+                            <button onClick={() => eliminaSingola(singola.id)} className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-semibold text-sm">
+                              🗑 Elimina
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB MULTIPLE */}
+        {activeTab === 'multiple' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Totali</div>
+                <div className="text-2xl font-bold text-gray-900">{statsMultiple.totale}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Vinte</div>
+                <div className="text-2xl font-bold text-green-600">{statsMultiple.vinte}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Perse</div>
+                <div className="text-2xl font-bold text-red-600">{statsMultiple.perse}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg card-shadow">
+                <div className="text-sm text-gray-600">Win Rate</div>
+                <div className="text-2xl font-bold text-blue-600">{statsMultiple.percentualeVittoria}%</div>
+              </div>
+            </div>
+
+            {/* Form Multipla */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">🎯 Crea Nuova Multipla</h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Nome multipla (es: Chelsea vs City + Liverpool)"
+                  value={formMultipla.nome}
+                  onChange={(e) => setFormMultipla({ ...formMultipla, nome: e.target.value })}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                />
+                <input
+                  type="number"
+                  placeholder="Importo puntata (€)"
+                  value={formMultipla.puntata}
+                  onChange={(e) => setFormMultipla({ ...formMultipla, puntata: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  min="0"
+                  step="0.01"
+                />
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Seleziona Partite (minimo 2)</label>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {Object.entries(
+                      PARTITE_DISPONIBILI.reduce((acc, p) => {
+                        if (!acc[p.data]) acc[p.data] = [];
+                        acc[p.data].push(p);
+                        return acc;
+                      }, {})
+                    ).sort().map(([data, partite]) => (
+                      <div key={data}>
+                        <h4 className="text-xs font-semibold text-gray-600 uppercase mt-3">
+                          📆 {new Date(data).toLocaleDateString('it-IT')}
+                        </h4>
+                        {partite.map(partita => (
+                          <div key={partita.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                            <img src={getStemmaSquadra(partita.squadra1)} alt={partita.squadra1} className="w-7 h-7 object-contain" />
+                            <div className="flex-1">
+                              <div className="text-sm font-semibold text-gray-900">{partita.squadra1} vs {partita.squadra2}</div>
+                              <div className="text-xs text-gray-600">{partita.campionato}</div>
+                            </div>
+                            <img src={getStemmaSquadra(partita.squadra2)} alt={partita.squadra2} className="w-7 h-7 object-contain" />
+                            <div className="flex gap-1">
+                              {[
+                                { label: '1', quota: partita.quota1, tipo: '1' },
+                                { label: 'X', quota: partita.quotaX, tipo: 'X' },
+                                { label: '2', quota: partita.quota2, tipo: '2' }
+                              ].map(opzione => (
+                                <button
+                                  key={opzione.tipo}
+                                  onClick={() => aggiungiPartiteMultipla(partita, opzione.tipo, opzione.quota)}
+                                  className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 font-semibold"
+                                >
+                                  {opzione.label} {opzione.quota}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Riepilogo Partite Selezionate */}
+                {formMultipla.partite.length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Partite Selezionate ({formMultipla.partite.length})</h4>
+                    <div className="space-y-1">
+                      {formMultipla.partite.map((p, i) => (
+                        <div key={i} className="flex justify-between items-center text-sm">
+                          <span>{p.partita.squadra1} vs {p.partita.squadra2} ({p.tipo})</span>
+                          <div className="flex items-center gap-2">
+                            <span className="quota-badge">{p.quota}</span>
+                            <button
+                              onClick={() => rimuoviPartiteMultipla(i)}
+                              className="text-red-600 hover:text-red-700 font-semibold"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-blue-200 mt-3 pt-3">
+                      <div className="flex justify-between items-center font-bold text-gray-900">
+                        <span>Quota Totale:</span>
+                        <span className="text-lg text-blue-600">
+                          {formMultipla.partite.reduce((acc, p) => acc * p.quota, 1).toFixed(3)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center font-bold text-gray-900 mt-1">
+                        <span>Guadagno Max:</span>
+                        <span className="text-lg text-green-600">
+                          €{(formMultipla.puntata * formMultipla.partite.reduce((acc, p) => acc * p.quota, 1) - formMultipla.puntata).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={creaMultipla}
+                  className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+                >
+                  🚀 Crea Multipla
+                </button>
+              </div>
+            </div>
+
+            {/* Lista Multiple */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">📋 Le Mie Multiple</h3>
+              <div className="space-y-4">
+                {multiple.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Nessuna multipla ancora</p>
+                ) : (
+                  multiple.map(multipla => (
+                    <div key={multipla.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="font-bold text-lg text-gray-900">🎯 {multipla.nome}</div>
+                          <div className="text-sm text-gray-600">{multipla.partite.length} partite</div>
+                        </div>
+                        <div className={`quota-badge ${multipla.stato === 'pending' ? 'status-pending' : multipla.stato === 'vinta' ? 'status-vinta' : 'status-persa'}`}>
+                          {multipla.stato.toUpperCase()}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-3 text-sm text-gray-700">
+                        {multipla.partite.map((p, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-gray-500">{i + 1}.</span>
+                            <img src={getStemmaSquadra(p.partita.squadra1)} alt={p.partita.squadra1} className="w-6 h-6 object-contain" />
+                            <span>{p.partita.squadra1} vs {p.partita.squadra2}</span>
+                            <span className="font-semibold text-blue-600">{p.tipo}</span>
+                            <span className="quota-badge text-xs">{p.quota}</span>
+                            <img src={getStemmaSquadra(p.partita.squadra2)} alt={p.partita.squadra2} className="w-6 h-6 object-contain" />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Quota Totale:</span>
+                          <span className="font-bold text-blue-600">{multipla.quotaTotale.toFixed(3)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Puntata:</span>
+                          <span className="font-bold">€{multipla.puntata.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Guadagno Max:</span>
+                          <span className="font-bold text-green-600">€{multipla.guadagnoMax.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {multipla.stato === 'pending' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => vincitaMultipla(multipla.id, multipla.quotaTotale, multipla.puntata)}
+                            className="flex-1 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold text-sm"
+                          >
+                            ✓ Vinta
+                          </button>
+                          <button
+                            onClick={() => perditaMultipla(multipla.id)}
+                            className="flex-1 px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold text-sm"
+                          >
+                            ✗ Persa
+                          </button>
+                          <button
+                            onClick={() => eliminaMultipla(multipla.id)}
+                            className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-semibold text-sm"
+                          >
+                            🗑 Elimina
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB BUDGET & STATISTICHE */}
+        {activeTab === 'budget' && (
+          <div className="space-y-6">
+            {/* Statistiche Globali */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white card-shadow">
+              <h3 className="text-2xl font-bold mb-6">📊 Statistiche Globali</h3>
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <div className="text-sm opacity-80">Scommesse Totali</div>
+                  <div className="text-3xl font-bold">{statsGlobali.totale}</div>
+                </div>
+                <div>
+                  <div className="text-sm opacity-80">Vinte</div>
+                  <div className="text-3xl font-bold text-green-300">{statsGlobali.vinte}</div>
+                </div>
+                <div>
+                  <div className="text-sm opacity-80">Win Rate</div>
+                  <div className="text-3xl font-bold">{statsGlobali.percentualeVittoria}%</div>
+                </div>
+                <div>
+                  <div className="text-sm opacity-80">ROI</div>
+                  <div className={`text-3xl font-bold ${parseFloat(statsGlobali.roi) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                    {parseFloat(statsGlobali.roi) > 0 ? '+' : ''}{statsGlobali.roi}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Confronto Singole vs Multiple */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg p-6 card-shadow">
+                <h4 className="font-bold text-gray-900 mb-4">📌 Singole</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Totali:</span>
+                    <span className="font-bold">{statsSingole.totale}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vinte:</span>
+                    <span className="font-bold text-green-600">{statsSingole.vinte}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Perse:</span>
+                    <span className="font-bold text-red-600">{statsSingole.perse}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Win Rate:</span>
+                    <span className="font-bold">{statsSingole.percentualeVittoria}%</span>
+                  </div>
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Stakato:</span>
+                      <span className="font-bold">€{statsSingole.totaleStakato.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-gray-600">Guadagnato:</span>
+                      <span className="font-bold text-green-600">€{(statsSingole.totaleGuadagnato - statsSingole.totaleStakato).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-gray-600">ROI:</span>
+                      <span className={`font-bold ${parseFloat(statsSingole.roi) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {parseFloat(statsSingole.roi) > 0 ? '+' : ''}{statsSingole.roi}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 card-shadow">
+                <h4 className="font-bold text-gray-900 mb-4">🎯 Multiple</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Totali:</span>
+                    <span className="font-bold">{statsMultiple.totale}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vinte:</span>
+                    <span className="font-bold text-green-600">{statsMultiple.vinte}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Perse:</span>
+                    <span className="font-bold text-red-600">{statsMultiple.perse}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Win Rate:</span>
+                    <span className="font-bold">{statsMultiple.percentualeVittoria}%</span>
+                  </div>
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Stakato:</span>
+                      <span className="font-bold">€{statsMultiple.totaleStakato.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-gray-600">Guadagnato:</span>
+                      <span className="font-bold text-green-600">€{(statsMultiple.totaleGuadagnato - statsMultiple.totaleStakato).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-gray-600">ROI:</span>
+                      <span className={`font-bold ${parseFloat(statsMultiple.roi) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {parseFloat(statsMultiple.roi) > 0 ? '+' : ''}{statsMultiple.roi}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Gestione Budget */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">💰 Gestione Budget</h3>
+              <div className="space-y-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600">Saldo Iniziale</div>
+                  <div className="text-2xl font-bold text-gray-900">€{budget.saldoIniziale.toFixed(2)}</div>
+                  <div className="mt-3">
+                    <input
+                      type="number"
+                      value={budget.saldoIniziale}
+                      onChange={(e) => {
+                        const newBudget = { ...budget, saldoIniziale: parseFloat(e.target.value) || 0 };
+                        setBudget(newBudget);
+                        salvaStato(singole, multiple, newBudget);
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600">Saldo Attuale</div>
+                    <div className="text-2xl font-bold text-green-600">€{budget.saldoAttuale.toFixed(2)}</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600">Differenza</div>
+                    <div className={`text-2xl font-bold ${budget.saldoAttuale >= budget.saldoIniziale ? 'text-green-600' : 'text-red-600'}`}>
+                      {budget.saldoAttuale >= budget.saldoIniziale ? '+' : ''}€{(budget.saldoAttuale - budget.saldoIniziale).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600">ROI Budget</div>
+                    <div className={`text-2xl font-bold ${budget.saldoAttuale >= budget.saldoIniziale ? 'text-green-600' : 'text-red-600'}`}>
+                      {budget.saldoIniziale > 0 ? (((budget.saldoAttuale - budget.saldoIniziale) / budget.saldoIniziale) * 100).toFixed(1) : 0}%
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Deposita / Preleva</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      id="importoMovimento"
+                      placeholder="Importo"
+                      className="flex-1 p-2 border border-gray-300 rounded"
+                      min="0"
+                      step="0.01"
+                    />
+                    <button
+                      onClick={() => {
+                        const input = document.getElementById('importoMovimento');
+                        const importo = parseFloat(input.value);
+                        if (importo > 0) {
+                          const newBudget = {
+                            ...budget,
+                            saldoAttuale: budget.saldoAttuale + importo,
+                            movimenti: [
+                              ...budget.movimenti,
+                              { id: Date.now(), tipo: 'deposito', descrizione: 'Deposito', importo, data: new Date().toISOString() }
+                            ]
+                          };
+                          setBudget(newBudget);
+                          salvaStato(singole, multiple, newBudget);
+                          input.value = '';
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold"
+                    >
+                      + Deposita
+                    </button>
+                    <button
+                      onClick={() => {
+                        const input = document.getElementById('importoMovimento');
+                        const importo = parseFloat(input.value);
+                        if (importo > 0 && importo <= budget.saldoAttuale) {
+                          const newBudget = {
+                            ...budget,
+                            saldoAttuale: budget.saldoAttuale - importo,
+                            movimenti: [
+                              ...budget.movimenti,
+                              { id: Date.now(), tipo: 'prelievo', descrizione: 'Prelievo', importo: -importo, data: new Date().toISOString() }
+                            ]
+                          };
+                          setBudget(newBudget);
+                          salvaStato(singole, multiple, newBudget);
+                          input.value = '';
+                        } else if (importo > budget.saldoAttuale) {
+                          alert('Fondi insufficienti!');
+                        }
+                      }}
+                      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold"
+                    >
+                      - Preleva
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Storico Movimenti */}
+            <div className="bg-white rounded-lg p-6 card-shadow">
+              <h3 className="text-xl font-bold mb-4">📜 Storico Movimenti</h3>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {budget.movimenti.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Nessun movimento</p>
+                ) : (
+                  budget.movimenti.slice().reverse().map(mov => (
+                    <div key={mov.id} className="flex justify-between items-center p-3 border-l-4 border-gray-300 bg-gray-50 rounded">
+                      <div>
+                        <div className="font-semibold text-gray-900">{mov.descrizione}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(mov.data).toLocaleDateString('it-IT')} {new Date(mov.data).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <div className={`font-bold ${mov.importo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {mov.importo >= 0 ? '+' : ''}€{mov.importo.toFixed(2)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
+    </div>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<AppPronostici />);
+</script>
+</body>
+</html>
